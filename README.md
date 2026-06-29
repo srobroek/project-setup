@@ -34,6 +34,19 @@ shipped with the core skill. Each module is independently versioned and tagged
 For authoring guidance — writing new modules, custom steps, agent-steered
 patterns — see [AUTHORING.md](skills/project-setup/examples/AUTHORING.md).
 
+## Authoring modules
+
+To write and publish your own module:
+
+1. Scaffold a starter with `uv run .../runner/cli.py --new-module <id>`
+2. Edit `module.toml`, `module.py`, and the test stub
+3. Commit to a git repo and tag a release
+4. Reference it from `.project-setup/sources.toml` with a pinned `ref`
+
+See **[docs/publishing-modules.md](docs/publishing-modules.md)** for the
+complete guide: `module.toml` schema, step-handler contract, SDK reference,
+testing, and the `[[source]]` declaration format.
+
 ## Release model
 
 This repo uses release-please in manifest mode. Each module and the core skill

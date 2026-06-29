@@ -1,0 +1,125 @@
+name: Bug report
+description: Something went wrong running project-setup or one of its modules.
+title: "[bug] "
+labels:
+  - bug
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please fill in as many fields as you can. The exact command and answers file are the
+        most important for reproducing the problem.
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened?
+      description: A clear description of the actual behavior.
+      placeholder: "The runner exited with a MISSING_ANSWER error even though I set lang-python.framework in my answers file."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      description: What should have happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command
+      description: >
+        The full `uv run .../runner/cli.py` invocation you ran, including
+        `--project-dir`, `--answers`, and any gate flags. Redact any personal paths
+        if needed, but keep the flags as-is.
+      render: shell
+      placeholder: |
+        uv run /path/to/skills/project-setup/runner/cli.py \
+          --project-dir /tmp/my-project \
+          --answers answers.json \
+          --allow-stack-write
+    validations:
+      required: true
+
+  - type: textarea
+    id: answers_file
+    attributes:
+      label: Answers file contents (sanitized)
+      description: >
+        Paste the JSON answers file you passed to `--answers`. Remove any real org names,
+        tokens, or private paths if needed, but keep all keys and value shapes.
+      render: json
+      placeholder: |
+        {
+          "enabled": ["core-identity", "lang-python"],
+          "core-identity.name": "my-project",
+          "core-identity.org": "acme",
+          "lang-python.framework": "fastapi",
+          "lang-python.python_version": "3.13"
+        }
+
+  - type: textarea
+    id: enabled_modules
+    attributes:
+      label: Enabled modules
+      description: Which modules were enabled (the `enabled` list from your answers file, or the modules you selected interactively)?
+      placeholder: "core-identity, dirs-scaffold, gitignore-generate, license-write, lang-python"
+
+  - type: textarea
+    id: plan_or_error
+    attributes:
+      label: Frozen plan or error output
+      description: >
+        Paste the relevant section of `.project-setup/.cache/plan.json` if it was written,
+        or the full error output from the runner. Include the structured `how_to_fix`
+        message if one was printed.
+      render: text
+
+  - type: checkboxes
+    id: dry_run
+    attributes:
+      label: Dry-run / inspect behavior
+      description: Did you try running with these flags?
+      options:
+        - label: "`--dry-run` — reproduces the problem (plan is built but nothing is written)"
+        - label: "`--dry-run` — does NOT reproduce (problem only occurs on real write)"
+        - label: Ran a specific step with `--inspect` against a frozen plan
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows (WSL)
+        - Windows (native)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: uv_version
+    attributes:
+      label: uv version
+      description: Output of `uv --version`
+      placeholder: "uv 0.4.0"
+    validations:
+      required: true
+
+  - type: input
+    id: python_version
+    attributes:
+      label: Python version
+      description: Output of `python3 --version` (the version uv resolves, not the system default)
+      placeholder: "Python 3.13.1"
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Anything else that might help (git log, `.project-setup/sources.toml` contents, unusual env vars set).
