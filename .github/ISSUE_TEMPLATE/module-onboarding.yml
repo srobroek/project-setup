@@ -1,0 +1,123 @@
+name: Module onboarding
+description: Register an external add-on module so it can be tracked and optionally listed in the catalog.
+title: "[module] "
+labels:
+  - module-onboarding
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to propose an external module for tracking or catalog inclusion.
+        See [docs/publishing-modules.md](../../docs/publishing-modules.md) for the full authoring guide.
+
+  - type: input
+    id: module_id
+    attributes:
+      label: Module id
+      description: >
+        The module's `id` field from `module.toml`. Must be lowercase kebab-case
+        (e.g. `lang-elixir`, `org-policy-acme`).
+      placeholder: my-module
+    validations:
+      required: true
+
+  - type: input
+    id: repo_locator
+    attributes:
+      label: Repository locator
+      description: >
+        `github.com/owner/repo` or `gitlab.com/owner/repo` — the value that goes
+        in the `locator` field of `[[source]]` in `sources.toml`.
+      placeholder: github.com/owner/my-module-repo
+    validations:
+      required: true
+
+  - type: input
+    id: ref
+    attributes:
+      label: Ref (tag or SHA)
+      description: >
+        The pinned tag or commit SHA to use. Branch refs are rejected by the
+        runner's unpinned-source gate — must be a tag or full SHA.
+      placeholder: v1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: subdir
+    attributes:
+      label: Subdirectory (if applicable)
+      description: >
+        The path within the repo where the module directory lives. Leave blank if
+        the module is at the repo root (i.e. `module.toml` is directly at `<repo>/module.toml`).
+      placeholder: modules/my-module
+
+  - type: textarea
+    id: description
+    attributes:
+      label: One-line description
+      description: What does this module scaffold? This appears in the catalog and module tables.
+      placeholder: "Add Elixir tooling (mix, credo, dialyxir) to a scaffolded project."
+    validations:
+      required: true
+
+  - type: input
+    id: language_target
+    attributes:
+      label: Language / framework target
+      description: Which language or framework does this module target? (e.g. Python, TypeScript, Elixir, Go, any)
+      placeholder: Elixir
+
+  - type: textarea
+    id: inputs_declared
+    attributes:
+      label: Inputs declared
+      description: >
+        List the `[[inputs]]` keys and types from `module.toml`. One per line.
+        Example: `elixir_version` (string), `use_phoenix` (bool)
+      placeholder: |
+        elixir_version (string)
+        use_phoenix (bool)
+
+  - type: textarea
+    id: gates_introduced
+    attributes:
+      label: Gate steps introduced
+      description: >
+        List any `kind = "gate"` steps with their `allow_flag` or `skip_flag` names and a brief
+        description of what action they guard.
+      placeholder: |
+        allow_flag = "allow-mix-init" — runs `mix new` in the project directory
+
+  - type: checkboxes
+    id: network_needs
+    attributes:
+      label: Network access
+      description: Does this module require network access during execution?
+      options:
+        - label: "Yes — module fetches from the network at runtime (describe in additional context)"
+        - label: "No — module is fully offline after source fetch"
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: "`uv run --with pytest pytest -q test_*.py` passes"
+          required: true
+        - label: "`module.toml` parses without errors (verified by the test stub)"
+          required: true
+        - label: "`default_enabled` is NOT set in `module.toml` (addon modules are always opt-in)"
+          required: true
+        - label: All `sdk.idempotent_write` calls use safe relative paths (no `..`, no absolute paths)
+          required: true
+        - label: Published `ref` is a tag or full SHA — not a branch name
+          required: true
+        - label: Any network calls degrade gracefully offline
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Anything else the maintainers should know (dependencies, external tools required, known limitations).
