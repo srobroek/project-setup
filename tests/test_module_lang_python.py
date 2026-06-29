@@ -516,10 +516,11 @@ def test_sc001_verified_pins_written_in_pyproject(tmp_path):
     assert result["status"] == "ok", result
 
     pyproject_content = (project / "pyproject.toml").read_text()
-    assert "fastapi@0.115.5" in pyproject_content, \
-        f"Expected fastapi@0.115.5 in pyproject.toml; got:\n{pyproject_content}"
-    assert "uvicorn@0.34.0" in pyproject_content, \
-        f"Expected uvicorn@0.34.0 in pyproject.toml; got:\n{pyproject_content}"
+    # Pins are converted from internal @ format to PEP 508 == format
+    assert "fastapi==0.115.5" in pyproject_content, \
+        f"Expected fastapi==0.115.5 in pyproject.toml; got:\n{pyproject_content}"
+    assert "uvicorn==0.34.0" in pyproject_content, \
+        f"Expected uvicorn==0.34.0 in pyproject.toml; got:\n{pyproject_content}"
 
 
 # ── SC-005: no unpinned uv add; ruff_version drives pre-commit rev ────────────

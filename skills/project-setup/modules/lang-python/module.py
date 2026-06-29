@@ -86,13 +86,31 @@ def _parse_pyproject_deps(pyproject_path: Path) -> tuple[list[str], list[str]]:
         return [], []
 
 
+def _to_pep508(pin: str) -> str:
+    """Convert an internal ``name@version`` pin to PEP 508 ``name==version``.
+
+    Idempotent: pins already using ``==`` pass through unchanged. Pins without
+    a version separator (bare names) pass through unchanged. Splits on the LAST
+    ``@`` to handle scoped package names gracefully.
+    """
+    if "==" in pin:
+        return pin
+    if "@" not in pin:
+        return pin
+    name, version = pin.rsplit("@", 1)
+    return f"{name}=={version}"
+
+
 def _merge_deps(existing: list[str], new_pins: list[str]) -> list[str]:
     """Merge *new_pins* into *existing*, replacing any entry that shares a package
     name with a pin from *new_pins*.  Returns a sorted, deduplicated list.
 
-    Package name is the part before '@' (lowercased, with '-' normalized to '_').
+    Package name is the part before '@' or '==' (lowercased, with '-' normalized to '_').
     """
     def _name(pin: str) -> str:
+        # Split on '==' first, then '@' for the internal format
+        if "==" in pin:
+            return pin.split("==")[0].lower().replace("-", "_")
         return pin.split("@")[0].lower().replace("-", "_")
 
     new_by_name = {_name(p): p for p in new_pins}
@@ -132,8 +150,8 @@ def _patch_pyproject_deps(
         return False
     try:
         existing_rt, existing_dev = _parse_pyproject_deps(pyproject_path)
-        merged_rt = _merge_deps(existing_rt, runtime_pins)
-        merged_dev = _merge_deps(existing_dev, dev_pins)
+        merged_rt = [_to_pep508(p) for p in _merge_deps(existing_rt, runtime_pins)]
+        merged_dev = [_to_pep508(p) for p in _merge_deps(existing_dev, dev_pins)]
 
         content = pyproject_path.read_text(encoding="utf-8")
 
