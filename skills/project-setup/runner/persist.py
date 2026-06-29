@@ -403,6 +403,44 @@ def merge_module_answers_to_persist(
 
 
 # --------------------------------------------------------------------------- #
+# ensure_gitignore_cache_entry                                                 #
+# --------------------------------------------------------------------------- #
+def ensure_gitignore_cache_entry(project_dir: Path) -> bool:
+    """Ensure ``.project-setup/.gitignore`` contains a ``.cache/`` entry.
+
+    Unlike the root ``.gitignore`` helper (``ensure_gitignore_pytest_entry``),
+    this helper CREATES the file if absent — the ``.project-setup/`` directory
+    is owned by the runner and the ``.cache/`` subdirectory is pure scratch that
+    must never be committed.  Idempotent.
+
+    Returns ``True`` if the file was created or modified, ``False`` if already
+    correct.
+    """
+    psd = project_setup_dir(project_dir)
+    psd.mkdir(parents=True, exist_ok=True)
+    gitignore = psd / ".gitignore"
+
+    entry = ".cache/"
+    if gitignore.exists():
+        content = gitignore.read_text(encoding="utf-8")
+        if entry in content:
+            return False
+        # Append
+        gitignore.write_text(
+            content.rstrip("\n") + "\n" + entry + "\n",
+            encoding="utf-8",
+        )
+        return True
+
+    # Create fresh
+    gitignore.write_text(
+        "# project-setup runner scratch (auto-generated)\n" + entry + "\n",
+        encoding="utf-8",
+    )
+    return True
+
+
+# --------------------------------------------------------------------------- #
 # ensure_gitignore_pytest_entry                                                #
 # --------------------------------------------------------------------------- #
 def ensure_gitignore_pytest_entry(project_dir: Path) -> bool:

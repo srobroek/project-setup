@@ -73,6 +73,7 @@ write_answers_toml = _persist_mod.write_answers_toml
 write_modules_enabled = _persist_mod.write_modules_enabled
 merge_module_answers_to_persist = _persist_mod.merge_module_answers_to_persist
 ensure_gitignore_pytest_entry = _persist_mod.ensure_gitignore_pytest_entry
+ensure_gitignore_cache_entry = _persist_mod.ensure_gitignore_cache_entry
 check_sources_drift = _persist_mod.check_sources_drift
 
 resolve_enabled_modules = _enablement_mod.resolve_enabled_modules
@@ -502,8 +503,16 @@ def run_pipeline(
     project_dir = Path(project_dir).resolve()
     if plugin_root_path is None:
         plugin_root_path = plugin_root()
+    # When the caller does NOT supply a plan_path, we own its lifecycle and
+    # unconditionally remove it on both success and failure. When the caller
+    # explicitly passes a path (e.g. tests inspecting the frozen plan), they
+    # own cleanup and the file is left in place.
+    _owns_plan_cleanup = plan_path is None
     if plan_path is None:
-        plan_path = frozen_plan_path()
+        plan_path = frozen_plan_path(project_dir)
+        # Ensure the cache directory exists (project-local scratch).
+        plan_path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_gitignore_cache_entry(project_dir)
 
     result = PipelineResult(mode="init", success=False, dry_run=dry_run)
 
@@ -747,120 +756,164 @@ def run_pipeline(
     freeze(plan, path=plan_path)
     result.plan_path = plan_path
 
+    # ── Loud validation: reject unknown active flags ─────────────────────── #
+    if active_flags:
+        declared_flags: set[str] = set()
+        for mod in plan.modules.values():
+            for step in mod.steps:
+                af = step.get("allow_flag") if isinstance(step, dict) else None
+                sf = step.get("skip_flag") if isinstance(step, dict) else None
+                if af:
+                    declared_flags.add(af)
+                if sf:
+                    declared_flags.add(sf)
+        unknown = active_flags - declared_flags
+        if unknown:
+            if _owns_plan_cleanup:
+                plan_path.unlink(missing_ok=True)
+            err = SetupError(
+                error_code=ErrorCode.INPUT_VALUE_INVALID,
+                expected=f"flags matching declared gates: {sorted(declared_flags)}",
+                received=f"unknown flag(s): {sorted(unknown)}",
+                how_to_fix=(
+                    f"The following flag(s) do not match any declared allow_flag or "
+                    f"skip_flag in the enabled modules: {sorted(unknown)}. "
+                    f"Valid flags for this run: {sorted(declared_flags)}."
+                ),
+            )
+            result.errors.append(err)
+            result.success = False
+            io.notify(f"[ERROR] {err.how_to_fix}")
+            return result
+
     # ── Dry run stops here ────────────────────────────────────────────────── #
     if dry_run:
+        if _owns_plan_cleanup:
+            plan_path.unlink(missing_ok=True)
         result.success = True
         io.notify("[DRY RUN] Plan frozen. No files written to project.")
         return result
 
-    # ── Stage 7: execute ────────────────────────────────────────────────────── #
-    # Both init and reproduce use the inspect→confirm→write flow so that
-    # consequential steps are never executed without a confirm pass, and gate
-    # steps carry non_interactive so CI safe-skips instead of deadlocking.
-    #
-    # Init vs reproduce differ in the WRITE-confirm shape (spec 004 G1, FR-009):
-    #   - init: ONE whole-plan preview + aggregate confirm (G1); per-file prompts
-    #     here would be the gates-analysis anti-pattern #1. The inspect pass runs
-    #     non-interactively (interactive_per_diff=False) to gather the preview data,
-    #     then G1 captures the single decision. Decline ⟹ abort, nothing written.
-    #   - reproduce: the per-file write-confirm loop (the 001 behavior; G5 enriches
-    #     the destructive-overwrite case in Phase 8).
-    is_init = mode == "init"
-    confirmations = build_drift_report(
-        plan=plan,
-        plugin_root_path=plugin_root_path,
-        project_dir=project_dir,
-        io=io,
-        frozen_plan_path=plan_path,
-        env=env,
-        interactive_per_diff=not is_init,
-        non_interactive=non_interactive,
-    )
-    # G7 — surface cross-module shared-file collisions (informational; never blocks,
-    # both modes). Runs over the inspect data just gathered, before the G1 preview so
-    # a user sees the collision in the same review.
-    warn_conflicts(plan, confirmations, io)
-    if is_init:
-        proceed = whole_plan_gate(
-            plan, confirmations, io, non_interactive=non_interactive
+    # ── Stages 7+8 wrapped in try/finally for unconditional plan wipe ─────── #
+    try:
+        # ── Stage 7: execute ────────────────────────────────────────────────── #
+        # Both init and reproduce use the inspect→confirm→write flow so that
+        # consequential steps are never executed without a confirm pass, and gate
+        # steps carry non_interactive so CI safe-skips instead of deadlocking.
+        #
+        # Init vs reproduce differ in the WRITE-confirm shape (spec 004 G1, FR-009):
+        #   - init: ONE whole-plan preview + aggregate confirm (G1); per-file prompts
+        #     here would be the gates-analysis anti-pattern #1. The inspect pass runs
+        #     non-interactively (interactive_per_diff=False) to gather the preview data,
+        #     then G1 captures the single decision. Decline ⟹ abort, nothing written.
+        #   - reproduce: the per-file write-confirm loop (the 001 behavior; G5 enriches
+        #     the destructive-overwrite case in Phase 8).
+        is_init = mode == "init"
+        confirmations = build_drift_report(
+            plan=plan,
+            plugin_root_path=plugin_root_path,
+            project_dir=project_dir,
+            io=io,
+            frozen_plan_path=plan_path,
+            env=env,
+            interactive_per_diff=not is_init,
+            non_interactive=non_interactive,
         )
-        if not proceed:
-            io.notify("[PLAN] declined at the whole-plan preview — nothing written.")
-            result.success = True
-            result.mode = mode
-            return result
-    step_outcomes = apply_reproduce(
-        plan=plan,
-        confirmations=confirmations,
-        plugin_root_path=plugin_root_path,
-        project_dir=project_dir,
-        io=io,
-        frozen_plan_path=plan_path,
-        env=env,
-        non_interactive=non_interactive,
-        active_flags=active_flags,
-        refresh=refresh,
-    )
+        # G7 — surface cross-module shared-file collisions (informational; never blocks,
+        # both modes). Runs over the inspect data just gathered, before the G1 preview so
+        # a user sees the collision in the same review.
+        warn_conflicts(plan, confirmations, io)
+        if is_init:
+            proceed = whole_plan_gate(
+                plan, confirmations, io, non_interactive=non_interactive
+            )
+            if not proceed:
+                io.notify("[PLAN] declined at the whole-plan preview — nothing written.")
+                result.success = True
+                result.mode = mode
+                return result
+        step_outcomes = apply_reproduce(
+            plan=plan,
+            confirmations=confirmations,
+            plugin_root_path=plugin_root_path,
+            project_dir=project_dir,
+            io=io,
+            frozen_plan_path=plan_path,
+            env=env,
+            non_interactive=non_interactive,
+            active_flags=active_flags,
+            refresh=refresh,
+        )
 
-    # Collect file writes from outcomes
-    for out in step_outcomes:
-        if out.ok:
-            result.files_written.extend(out.files_written())
-            if out.module_id not in result.modules_executed:
-                result.modules_executed.append(out.module_id)
+        # Collect file writes from outcomes
+        for out in step_outcomes:
+            if out.ok:
+                result.files_written.extend(out.files_written())
+                if out.module_id not in result.modules_executed:
+                    result.modules_executed.append(out.module_id)
 
-    # ── Stage 8: persist ────────────────────────────────────────────────────── #
-    # Merge runtime answers_to_persist back into the resolved maps
-    final_answers, provenance_map = merge_module_answers_to_persist(
-        final_answers, provenance_map, step_outcomes
-    )
+        # ── Stage 8: persist ──────────────────────────────────────────────────── #
+        # Merge runtime answers_to_persist back into the resolved maps
+        final_answers, provenance_map = merge_module_answers_to_persist(
+            final_answers, provenance_map, step_outcomes
+        )
 
-    sources_path = write_sources_toml(
-        project_dir,
-        sources=all_sources,
-        skill_version=skill_version,
-    )
-    # FR-012: strip keys whose only provenance is the bare manifest default
-    # ("default") before writing answers.toml.  Manifest defaults are always
-    # recomputed from the manifest on every run (the layering model applies them
-    # unconditionally) — persisting them is redundant and harmful: it causes
-    # answers.toml to grow with never-committed default values, which violates
-    # the FR-012 boundary when a reproduce_only advisory agent returns an empty
-    # answers_to_persist.  Keys with provenance above "default" (home, project,
-    # agent-steered, flag) represent real committed decisions and are kept.
-    _DEFAULT_PROV = _contracts.Provenance.DEFAULT.value
-    persist_answers: dict[str, dict[str, Any]] = {}
-    persist_prov: dict[str, dict[str, str]] = {}
-    for _mod_id, _mod_answers in final_answers.items():
-        _mod_prov = provenance_map.get(_mod_id, {})
-        _filtered = {
-            k: v for k, v in _mod_answers.items()
-            if _mod_prov.get(k, _DEFAULT_PROV) != _DEFAULT_PROV
-        }
-        _filtered_prov = {k: v for k, v in _mod_prov.items() if k in _filtered}
-        if _filtered:
-            persist_answers[_mod_id] = _filtered
-            persist_prov[_mod_id] = _filtered_prov
-    answers_path = write_answers_toml(
-        project_dir,
-        answers=persist_answers,
-        provenance_map=persist_prov,
-    )
-    # Persist the resolved enabled set (FR-004): write [modules].enabled so
-    # reproduce can replay the exact module set without re-grilling.
-    write_modules_enabled(
-        project_dir,
-        enabled_ids=sorted(enabled_ids),
-        provenance=_en_provenance,
-    )
-    ensure_gitignore_pytest_entry(project_dir)
+        sources_path = write_sources_toml(
+            project_dir,
+            sources=all_sources,
+            skill_version=skill_version,
+        )
+        # FR-012: strip keys whose only provenance is the bare manifest default
+        # ("default") before writing answers.toml.  Manifest defaults are always
+        # recomputed from the manifest on every run (the layering model applies them
+        # unconditionally) — persisting them is redundant and harmful: it causes
+        # answers.toml to grow with never-committed default values, which violates
+        # the FR-012 boundary when a reproduce_only advisory agent returns an empty
+        # answers_to_persist.  Keys with provenance above "default" (home, project,
+        # agent-steered, flag) represent real committed decisions and are kept.
+        _DEFAULT_PROV = _contracts.Provenance.DEFAULT.value
+        persist_answers: dict[str, dict[str, Any]] = {}
+        persist_prov: dict[str, dict[str, str]] = {}
+        for _mod_id, _mod_answers in final_answers.items():
+            _mod_prov = provenance_map.get(_mod_id, {})
+            _filtered = {
+                k: v for k, v in _mod_answers.items()
+                if _mod_prov.get(k, _DEFAULT_PROV) != _DEFAULT_PROV
+            }
+            _filtered_prov = {k: v for k, v in _mod_prov.items() if k in _filtered}
+            if _filtered:
+                persist_answers[_mod_id] = _filtered
+                persist_prov[_mod_id] = _filtered_prov
+        answers_path = write_answers_toml(
+            project_dir,
+            answers=persist_answers,
+            provenance_map=persist_prov,
+        )
+        # Persist the resolved enabled set (FR-004): write [modules].enabled so
+        # reproduce can replay the exact module set without re-grilling.
+        write_modules_enabled(
+            project_dir,
+            enabled_ids=sorted(enabled_ids),
+            provenance=_en_provenance,
+        )
+        ensure_gitignore_pytest_entry(project_dir)
 
-    result.sources_toml_path = sources_path
-    result.answers_toml_path = answers_path
-    result.success = True
+        result.sources_toml_path = sources_path
+        result.answers_toml_path = answers_path
+        result.success = True
 
-    io.notify(
-        f"\n[DONE] project-setup complete ({mode} mode). "
-        f"{len(result.modules_executed)} module(s) executed."
-    )
+        io.notify(
+            f"\n[DONE] project-setup complete ({mode} mode). "
+            f"{len(result.modules_executed)} module(s) executed."
+        )
+    finally:
+        # Unconditional cleanup when we own the plan path: the frozen plan is
+        # intra-run scratch — remove on both success and failure so it never
+        # lingers and cannot clobber other runs.
+        if _owns_plan_cleanup:
+            try:
+                plan_path.unlink(missing_ok=True)
+            except Exception:
+                pass  # Never let cleanup raise
+
     return result

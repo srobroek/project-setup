@@ -112,10 +112,12 @@ def test_plugin_root_contains_runner_and_modules_layout():
     assert paths.sdk_path().parent.name == "runner"
 
 
-def test_cache_and_frozen_plan_live_outside_project(tmp_path, monkeypatch):
-    monkeypatch.setenv("PROJECT_SETUP_CACHE_DIR", str(tmp_path / "cache"))
-    # frozen plan must be under the cache, never under a project's .project-setup/
-    fp = paths.frozen_plan_path()
-    psd = paths.project_setup_dir(tmp_path / "proj")
-    assert str(psd) not in str(fp)
-    assert "cache" in str(fp)
+def test_frozen_plan_is_project_local(tmp_path):
+    # frozen plan lives under .project-setup/.cache/ of the given project
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    fp = paths.frozen_plan_path(proj)
+    psd = paths.project_setup_dir(proj)
+    assert str(fp).startswith(str(psd))
+    assert ".cache" in str(fp)
+    assert fp.name == "plan.json"

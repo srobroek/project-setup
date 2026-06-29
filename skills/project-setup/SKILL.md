@@ -51,22 +51,41 @@ hand the runner a frozen answer set — the runner never prompts.
    Then `uv run <root>/runner/cli.py --project-dir <dir> --answers answers.json [gate flags]`.
    The runner validates, builds the plan, executes, and writes `.project-setup/`.
 
-Gates are driven by the per-action flags below (NOT by prompts): with `--answers` the run
-is non-interactive, so a hard gate SAFE-skips unless you pass its `--allow-*` flag. The
-complete flag set:
+Gates are driven by consent flags (NOT by prompts): with `--answers` the run is
+non-interactive, so a hard gate SAFE-skips unless its flag is active.
+
+**Primary path: declare consent in the answers file.** Add `"allow"` and/or `"skip"`
+top-level lists to the answers JSON/TOML alongside `"enabled"`:
+
+```json
+{
+  "enabled": ["lang-python", "ci-github-actions"],
+  "allow": ["allow-stack-write", "allow-ci-write"],
+  "skip": ["no-external-generators"],
+  "core-identity.name": "my-app"
+}
+```
+
+**CLI fallback: generic repeatable flags.**
 
 | flag | meaning |
 |---|---|
 | `--project-dir <dir>` | the project directory to set up (default `.`) |
-| `--answers <file>` | **(primary)** JSON/TOML of pre-collected answers (`module.key`→value + optional `enabled`); runs non-interactively |
+| `--answers <file>` | **(primary)** JSON/TOML of pre-collected answers (`module.key`→value + optional `enabled`, `allow`, `skip`); runs non-interactively |
 | `--non-interactive` | no prompts; defaults + committed answers only (CI, no `--answers`) |
 | `--dry-run` | build the plan but write nothing |
 | `--skill-version <v>` | advisory version string recorded in `sources.toml` |
 | `--refresh <module[.key]>` | reproduce only: re-research the named agent decision(s); repeatable |
-| `--allow-public-repo` | CI opt-in: create a PUBLIC GitHub repo (G3 hard gate) |
-| `--allow-install` | CI opt-in: run the batched `apm install` (G2 supply-chain gate) |
-| `--allow-stack-write` | CI opt-in: write agent-researched dependency pins (G6) |
-| `--no-external-generators` | CI opt-out: skip external scaffolders like `nuxi init` (G4 soft) |
+| `--allow FLAG` | generic opt-in (repeatable); flag must match an `allow_flag` declared in a module step |
+| `--skip FLAG` | generic opt-out (repeatable); flag must match a `skip_flag` declared in a module step |
+| `--allow-public-repo` | (deprecated: use `--allow allow-public-repo`) |
+| `--allow-install` | (deprecated: use `--allow allow-install`) |
+| `--allow-stack-write` | (deprecated: use `--allow allow-stack-write`) |
+| `--no-external-generators` | (deprecated: use `--skip no-external-generators`) |
+
+**Loud validation:** if any supplied flag does not match a declared `allow_flag` or
+`skip_flag` in the enabled modules' steps, the runner FAILS with an actionable error
+listing the valid flags. This prevents silent typos from reaching production.
 
 (Running with NO `--answers` and NO `--non-interactive` falls back to an interactive stdin
 interview — that is the legacy/human-debug path, not how you, the agent, drive it.)

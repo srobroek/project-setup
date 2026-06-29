@@ -269,7 +269,7 @@ def test_pipeline_dry_run_does_not_write_committed_files(tmp_path):
 
 
 def test_pipeline_dry_run_freezes_plan(tmp_path):
-    """dry_run still produces a frozen plan."""
+    """dry_run still produces a frozen plan (caller-supplied path is left intact)."""
     plugin_root = _make_plugin_root_with_module(tmp_path, "codex-config")
     project_dir = tmp_path / "project"
     project_dir.mkdir()
@@ -286,6 +286,8 @@ def test_pipeline_dry_run_freezes_plan(tmp_path):
     )
 
     assert result.plan_path is not None
+    # Caller-supplied plan_path is NOT cleaned up (caller owns lifecycle).
+    # Only auto-generated paths (plan_path=None) are unconditionally wiped.
     assert result.plan_path.exists()
     data = json.loads(result.plan_path.read_text())
     assert data["schema_version"] == SCHEMA_VERSION

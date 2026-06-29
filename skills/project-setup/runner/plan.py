@@ -206,7 +206,7 @@ def build_plan(
 # --------------------------------------------------------------------------- #
 # Freeze / load                                                                #
 # --------------------------------------------------------------------------- #
-def freeze(plan: ExecutionPlan, path: Path | None = None) -> Path:
+def freeze(plan: ExecutionPlan, path: Path) -> Path:
     """Serialize *plan* to disk via ``canonical_json``.
 
     Parameters
@@ -214,15 +214,13 @@ def freeze(plan: ExecutionPlan, path: Path | None = None) -> Path:
     plan:
         The ``ExecutionPlan`` to freeze.
     path:
-        Output path; defaults to ``paths.frozen_plan_path()``.
+        Output path (required). Obtain via ``paths.frozen_plan_path(project_dir)``.
 
     Returns
     -------
     Path
         The path where the plan was written.
     """
-    if path is None:
-        path = frozen_plan_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     # LOCAL date (spec 012 Q5): advisory ADR "decided-on" date, not an audit timestamp.
     # Set every freeze so the field reflects THIS run. The STACK.md date comes from the
