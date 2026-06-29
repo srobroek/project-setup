@@ -273,3 +273,60 @@ def test_previously_unreachable_gate_fires_with_allow(tmp_path):
     assert result.success is True
     # The module should have been executed (gate did not safe-skip)
     assert "gated-mod" in result.modules_executed
+
+
+# --------------------------------------------------------------------------- #
+# (f) END-TO-END via cli.main(): answers-file `allow` reaches the pipeline     #
+#     gate resolver — regression guard for the wiring bug where main() passed  #
+#     _active_flags(args) (CLI-only) to run_pipeline instead of the merged set #
+#     that includes the answers-file allow/skip lists.                         #
+# --------------------------------------------------------------------------- #
+def test_answers_file_allow_reaches_pipeline_via_main(tmp_path, monkeypatch):
+    """cli.main() must forward the answers-file allow/skip lists to run_pipeline.
+
+    Regression guard for the wiring bug where main() passed _active_flags(args)
+    (CLI flags only) to run_pipeline, so answers-file `allow`/`skip` reached
+    FileAnswersIO but NOT the pipeline gate resolver — every gate safe-skipped.
+
+    We patch run_pipeline to capture the active_flags it actually receives. This
+    asserts the real main() call path without depending on full module discovery
+    (bundled modules require unrelated inputs in a hermetic run).
+    """
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+
+    answers_file = tmp_path / "answers.json"
+    answers_file.write_text(json.dumps({
+        "allow": ["allow-ci-write", "allow-readme"],
+        "skip": ["no-external-generators"],
+        # also pass a CLI-equivalent answer key to prove the union, below
+    }))
+
+    captured = {}
+
+    class _Result:
+        success = True
+        errors: list = []
+
+    def _fake_run_pipeline(*args, **kwargs):
+        captured["active_flags"] = kwargs.get("active_flags")
+        return _Result()
+
+    monkeypatch.setattr(_cli_mod, "run_pipeline", _fake_run_pipeline)
+
+    with patch("shutil.which", return_value="/usr/bin/uv"):
+        rc = _cli_mod.main([
+            "--project-dir", str(project_dir),
+            "--answers", str(answers_file),
+            "--allow", "allow-public-repo",  # CLI flag must ALSO be present (union)
+        ])
+
+    assert rc == 0
+    flags = captured["active_flags"]
+    assert flags is not None, "run_pipeline received no active_flags"
+    # The answers-file flags MUST be in the set the pipeline sees (the bug).
+    assert "allow-ci-write" in flags
+    assert "allow-readme" in flags
+    assert "no-external-generators" in flags
+    # The CLI flag must be unioned in too.
+    assert "allow-public-repo" in flags
