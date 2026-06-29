@@ -1,0 +1,306 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "separate-pull-requests": true,
+  "packages": {
+    "skills/project-setup": {
+      "release-type": "simple",
+      "component": "project-setup",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "yaml",
+          "path": "apm.yml",
+          "jsonpath": "$.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/agents-md": {
+      "release-type": "simple",
+      "component": "agents-md",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/agents-md/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/apm-install": {
+      "release-type": "simple",
+      "component": "apm-install",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/apm-install/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/ci-github-actions": {
+      "release-type": "simple",
+      "component": "ci-github-actions",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/ci-github-actions/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/codex-config": {
+      "release-type": "simple",
+      "component": "codex-config",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/codex-config/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/core-identity": {
+      "release-type": "simple",
+      "component": "core-identity",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/core-identity/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/dirs-scaffold": {
+      "release-type": "simple",
+      "component": "dirs-scaffold",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/dirs-scaffold/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/env-example": {
+      "release-type": "simple",
+      "component": "env-example",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/env-example/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/git-init": {
+      "release-type": "simple",
+      "component": "git-init",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/git-init/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/github-repo": {
+      "release-type": "simple",
+      "component": "github-repo",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/github-repo/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/gitignore-generate": {
+      "release-type": "simple",
+      "component": "gitignore-generate",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/gitignore-generate/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/justfile-write": {
+      "release-type": "simple",
+      "component": "justfile-write",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/justfile-write/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/lang-go": {
+      "release-type": "simple",
+      "component": "lang-go",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/lang-go/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/lang-python": {
+      "release-type": "simple",
+      "component": "lang-python",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/lang-python/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/lang-rust": {
+      "release-type": "simple",
+      "component": "lang-rust",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/lang-rust/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/lang-ts": {
+      "release-type": "simple",
+      "component": "lang-ts",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/lang-ts/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/license-write": {
+      "release-type": "simple",
+      "component": "license-write",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/license-write/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/mcp-config": {
+      "release-type": "simple",
+      "component": "mcp-config",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/mcp-config/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/org-policy": {
+      "release-type": "simple",
+      "component": "org-policy",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/org-policy/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/package-add": {
+      "release-type": "simple",
+      "component": "package-add",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/package-add/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/precommit-setup": {
+      "release-type": "simple",
+      "component": "precommit-setup",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/precommit-setup/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/quality-hooks": {
+      "release-type": "simple",
+      "component": "quality-hooks",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/quality-hooks/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/readme-draft": {
+      "release-type": "simple",
+      "component": "readme-draft",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/readme-draft/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/speckit-bridge": {
+      "release-type": "simple",
+      "component": "speckit-bridge",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/speckit-bridge/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    },
+    "skills/project-setup/modules/stack-adr": {
+      "release-type": "simple",
+      "component": "stack-adr",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "skills/project-setup/modules/stack-adr/module.toml",
+          "jsonpath": "$.module.version"
+        }
+      ]
+    }
+  }
+}

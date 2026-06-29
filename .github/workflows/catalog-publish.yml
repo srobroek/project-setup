@@ -1,0 +1,152 @@
+name: Publish addon catalog
+
+# Triggered on push to main (rolling "main" catalog) and on any module or core
+# release tag (*-v*) via the published release event from release-please.
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+env:
+  REPO_OWNER: srobroek
+  REPO_NAME: project-setup
+  # The modules live under this path relative to the repo root
+  MODULES_DIR: skills/project-setup/modules
+
+jobs:
+  publish-catalog:
+    name: Build and publish catalog.json
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve git ref
+        id: ref
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "value=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=main" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Build catalog.json from every skills/project-setup/modules/*/module.toml.
+      # For module release tags (*-v*), pin each matching module's ref to the tag;
+      # all other modules retain "main". On a push-to-main all modules use "main".
+      - name: Build catalog.json
+        id: build
+        run: |
+          python3 - <<'PYEOF'
+          import json, pathlib, os, re, sys
+
+          try:
+              import tomllib
+          except ImportError:
+              try:
+                  import tomli as tomllib
+              except ImportError:
+                  print("ERROR: tomllib/tomli not available. Requires Python 3.11+.", file=sys.stderr)
+                  sys.exit(1)
+
+          repo_owner  = os.environ["REPO_OWNER"]
+          repo_name   = os.environ["REPO_NAME"]
+          modules_dir = os.environ["MODULES_DIR"]
+          git_ref     = "${{ steps.ref.outputs.value }}"
+          event_name  = "${{ github.event_name }}"
+
+          # When this is a release event, check if the tag matches a single module
+          # (pattern: <module-name>-v<semver>) and pin that module to the tag.
+          released_module = None
+          released_ref    = None
+          if event_name == "release":
+              tag = git_ref  # e.g. "lang-python-v1.2.0"
+              m = re.match(r'^(?P<mod>.+)-v\d+\.\d+\.\d+.*$', tag)
+              if m:
+                  released_module = m.group("mod")
+                  released_ref    = tag
+              # Core skill tag: "project-setup-v0.x.0" — no per-module override needed
+
+          modules_path = pathlib.Path(modules_dir)
+          if not modules_path.is_dir():
+              print(f"No modules/ directory found at {modules_dir}.", file=sys.stderr)
+              catalog = {"schema": "project-setup-addon-catalog/v1", "ref": git_ref, "modules": []}
+              pathlib.Path("skills/project-setup/addons/catalog.json").write_text(
+                  json.dumps(catalog, indent=2) + "\n", encoding="utf-8")
+              sys.exit(0)
+
+          records = []
+          for toml_path in sorted(modules_path.glob("*/module.toml")):
+              module_id = toml_path.parent.name
+              try:
+                  data = tomllib.loads(toml_path.read_text(encoding="utf-8"))
+              except Exception as exc:
+                  print(f"WARN: skipping {toml_path}: {exc}", file=sys.stderr)
+                  continue
+
+              mod         = data.get("module", {})
+              name        = mod.get("id", module_id)
+              description = mod.get("description", "")
+              category    = mod.get("category", "")
+
+              # Pin to the release tag when this is the released module;
+              # otherwise use main for rolling builds, or keep "main" for
+              # other modules during a different module's release.
+              if released_module and name == released_module and released_ref:
+                  ref = released_ref
+              elif event_name == "release":
+                  # Another module released — use "main" for the rest
+                  # (a separate catalog-publish run will have pinned each at its own release)
+                  ref = "main"
+              else:
+                  ref = "main"
+
+              locator = f"{repo_owner}/{repo_name}/skills/project-setup/modules/{name}"
+
+              records.append({
+                  "name":        name,
+                  "description": description,
+                  "locator":     locator,
+                  "category":    category,
+                  "ref":         ref,
+              })
+
+          catalog = {
+              "schema":  "project-setup-addon-catalog/v1",
+              "note":    "Catalog auto-published by catalog-publish.yml. Module refs are pinned to their release tag when triggered by a module release; otherwise 'main'.",
+              "ref":     git_ref,
+              "modules": records,
+          }
+          out = pathlib.Path("skills/project-setup/addons/catalog.json")
+          out.write_text(json.dumps(catalog, indent=2) + "\n", encoding="utf-8")
+          print(f"Built catalog.json with {len(records)} module(s) at ref={git_ref!r}")
+          PYEOF
+
+      - name: Show catalog summary
+        run: |
+          echo "--- catalog.json (first 40 lines) ---"
+          head -40 skills/project-setup/addons/catalog.json
+
+      # Publish catalog.json to gh-pages for stable raw-URL access:
+      #   https://raw.githubusercontent.com/srobroek/project-setup/gh-pages/catalog.json
+      - name: Publish to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: skills/project-setup/addons
+          publish_branch: gh-pages
+          keep_files: true
+          include_files: catalog.json
+
+      # Also attach catalog.json as a release asset for immutable pinning.
+      - name: Upload catalog.json as release asset
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: skills/project-setup/addons/catalog.json
+          tag_name: ${{ github.event.release.tag_name }}
