@@ -527,6 +527,12 @@ def main(argv: list[str] | None = None) -> int:
     # ── IO construction (FR-001/002/006) ─────────────────────────────────────── #
     # Priority: --answers (agent path) > --non-interactive > TerminalIO (human).
     non_interactive = args.non_interactive
+    # Gate consent flags start from CLI --allow/--skip (+ deprecated aliases); the
+    # --answers path extends this with the file's allow/skip lists. This SAME set
+    # must reach run_pipeline() — the pipeline's active_flags is what actually
+    # drives the gate resolver, so the answers-file flags must be merged in here,
+    # not just handed to FileAnswersIO.
+    active_flags = _active_flags(args)
     if args.answers:
         answers_path = Path(args.answers).expanduser().resolve()
         try:
@@ -568,17 +574,16 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
 
-        # Merge answers-file flags with CLI flags (union).
-        merged_flags = _active_flags(args)
+        # Merge answers-file flags into the active set (union with CLI flags).
         if file_allow:
-            merged_flags = merged_flags | frozenset(str(f) for f in file_allow)
+            active_flags = active_flags | frozenset(str(f) for f in file_allow)
         if file_skip:
-            merged_flags = merged_flags | frozenset(str(f) for f in file_skip)
+            active_flags = active_flags | frozenset(str(f) for f in file_skip)
 
         io = FileAnswersIO(
             answers=raw_answers,
             enabled=enabled,
-            active_flags=merged_flags,
+            active_flags=active_flags,
         )
         non_interactive = True  # answer-driven implies non-interactive semantics
     elif args.non_interactive:
@@ -594,7 +599,7 @@ def main(argv: list[str] | None = None) -> int:
             non_interactive=non_interactive,
             dry_run=args.dry_run,
             refresh=args.refresh,
-            active_flags=_active_flags(args),
+            active_flags=active_flags,
         )
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
