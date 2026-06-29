@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.2](https://github.com/srobroek/project-setup/compare/project-setup-v0.3.1...project-setup-v0.3.2) (2026-06-29)
+
+
+### Bug Fixes
+
+* answers-file consent flags were ignored, causing all gates to safe-skip ([010aed7](https://github.com/srobroek/project-setup/commit/010aed755ed5dd0a0ae00479204c5d32d522da56))
+* **project-setup:** wire answers-file allow/skip flags into the pipeline gate resolver ([22d874c](https://github.com/srobroek/project-setup/commit/22d874cb54cbe04b3eeec1539175bf1965d66ef2))
+
 ## [0.3.1](https://github.com/srobroek/project-setup/compare/project-setup-v0.3.0...project-setup-v0.3.1) (2026-06-29)
 
 
