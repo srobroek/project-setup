@@ -148,30 +148,51 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    # ── Per-action gate flags (spec 004 §3) ─────────────────────────────────── #
+    # ── Generic gate flags (spec 004 §3) ─────────────────────────────────────── #
     # Hard gates SAFE-skip in --non-interactive unless opted in by a SPECIFIC flag;
     # soft gates proceed unless opted out. There is deliberately NO global
     # "--yes"/"--confirm-all" (spec 004 FR-005 / anti-pattern 5): a blanket toggle
     # would auto-approve the public repo, the install, and the stack write together.
     gate = p.add_argument_group(
         "gate opt-in/opt-out flags",
-        "Per-action consent for hard gates in --non-interactive runs (no global yes-to-all).",
+        "Per-action consent for hard gates in --non-interactive runs (no global yes-to-all). "
+        "Use generic --allow/--skip for any declared gate flag.",
     )
     gate.add_argument(
+        "--allow", action="append", default=None, dest="allow", metavar="FLAG",
+        help=(
+            "Opt-in to a named hard gate (repeatable). Example: --allow allow-public-repo. "
+            "The flag name must match an allow_flag declared in a module's [[steps]]."
+        ),
+    )
+    gate.add_argument(
+        "--skip", action="append", default=None, dest="skip", metavar="FLAG",
+        help=(
+            "Opt-out of a named soft gate (repeatable). Example: --skip no-external-generators. "
+            "The flag name must match a skip_flag declared in a module's [[steps]]."
+        ),
+    )
+
+    # ── Deprecated per-flag switches (kept for backward compat) ────────────── #
+    dep_gate = p.add_argument_group(
+        "deprecated gate flags",
+        "Legacy per-action switches. Use --allow/--skip instead.",
+    )
+    dep_gate.add_argument(
         "--allow-public-repo", action="store_true", default=False,
-        help="CI opt-in: create a PUBLIC GitHub repo (G3 hard gate). Off = safe-skip.",
+        help="(deprecated: use --allow allow-public-repo) CI opt-in: create a PUBLIC GitHub repo (G3 hard gate).",
     )
-    gate.add_argument(
+    dep_gate.add_argument(
         "--allow-install", action="store_true", default=False,
-        help="CI opt-in: run the batched 'apm install' (G2 supply-chain gate). Off = safe-skip.",
+        help="(deprecated: use --allow allow-install) CI opt-in: run the batched 'apm install' (G2 supply-chain gate).",
     )
-    gate.add_argument(
+    dep_gate.add_argument(
         "--allow-stack-write", action="store_true", default=False,
-        help="CI opt-in: write agent-researched dependency pins (G6 gate). Off = safe-skip.",
+        help="(deprecated: use --allow allow-stack-write) CI opt-in: write agent-researched dependency pins (G6 gate).",
     )
-    gate.add_argument(
+    dep_gate.add_argument(
         "--no-external-generators", action="store_true", default=False,
-        help="CI opt-out: skip external scaffolders like 'nuxi init' (G4 soft gate).",
+        help="(deprecated: use --skip no-external-generators) CI opt-out: skip external scaffolders like 'nuxi init' (G4 soft gate).",
     )
 
     # ── New-module scaffold (FR-C5) ──────────────────────────────────────────── #
@@ -201,7 +222,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
 # Map argparse dest → the gate flag name carried in active_flags. The flag NAME
 # (kebab) is what gate steps reference via [[steps]].allow_flag / .skip_flag.
-_GATE_FLAGS = {
+# These are the DEPRECATED switches; kept for backward compat.
+_DEPRECATED_GATE_FLAGS = {
     "allow_public_repo": "allow-public-repo",
     "allow_install": "allow-install",
     "allow_stack_write": "allow-stack-write",
@@ -210,10 +232,23 @@ _GATE_FLAGS = {
 
 
 def _active_flags(args: argparse.Namespace) -> frozenset[str]:
-    """Collect the gate flag names the user activated into the set the resolver reads."""
-    return frozenset(
-        flag for dest, flag in _GATE_FLAGS.items() if getattr(args, dest, False)
-    )
+    """Collect the gate flag names the user activated into the set the resolver reads.
+
+    Sources (unioned):
+    1. Generic --allow / --skip (primary CLI path).
+    2. Deprecated per-flag switches (backward compat).
+    """
+    flags: set[str] = set()
+    # Generic repeatable flags
+    if args.allow:
+        flags.update(args.allow)
+    if args.skip:
+        flags.update(args.skip)
+    # Deprecated switches
+    for dest, flag in _DEPRECATED_GATE_FLAGS.items():
+        if getattr(args, dest, False):
+            flags.add(flag)
+    return frozenset(flags)
 
 
 # --------------------------------------------------------------------------- #
@@ -516,10 +551,34 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
+
+        # Pull optional allow/skip lists from the answers file (primary consent path).
+        file_allow = raw_answers.pop("allow", None)
+        file_skip = raw_answers.pop("skip", None)
+        if file_allow is not None and not isinstance(file_allow, list):
+            print(
+                f"Error: 'allow' in --answers file must be a list of flag names, got {type(file_allow).__name__}",
+                file=sys.stderr,
+            )
+            return 1
+        if file_skip is not None and not isinstance(file_skip, list):
+            print(
+                f"Error: 'skip' in --answers file must be a list of flag names, got {type(file_skip).__name__}",
+                file=sys.stderr,
+            )
+            return 1
+
+        # Merge answers-file flags with CLI flags (union).
+        merged_flags = _active_flags(args)
+        if file_allow:
+            merged_flags = merged_flags | frozenset(str(f) for f in file_allow)
+        if file_skip:
+            merged_flags = merged_flags | frozenset(str(f) for f in file_skip)
+
         io = FileAnswersIO(
             answers=raw_answers,
             enabled=enabled,
-            active_flags=_active_flags(args),
+            active_flags=merged_flags,
         )
         non_interactive = True  # answer-driven implies non-interactive semantics
     elif args.non_interactive:

@@ -78,12 +78,19 @@ def sources_cache_dir() -> Path:
     return cache_root() / "git"
 
 
-def frozen_plan_path() -> Path:
-    """The frozen execution plan location — in the runtime cache, NEVER inside
-    the committed .project-setup/ (determinism + reproducibility, FR-008/FR-019).
+def frozen_plan_path(project_dir: Path) -> Path:
+    """The frozen execution plan location — project-local scratch cache.
+
+    The plan is pure intra-run scratch: it is written before execution and
+    unconditionally deleted after (success or failure). Storing it per-project
+    under ``.project-setup/.cache/plan.json`` prevents concurrent runs in
+    different projects from clobbering each other.
+
+    The ``.project-setup/.cache/`` directory is gitignored by
+    ``ensure_gitignore_cache_entry`` (called by the pipeline).
     """
 
-    return cache_root() / "plan.json"
+    return project_setup_dir(project_dir) / ".cache" / "plan.json"
 
 
 def home_config_path() -> Path:
