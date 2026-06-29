@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.1](https://github.com/srobroek/project-setup/compare/project-setup-v0.3.0...project-setup-v0.3.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* project-local frozen plan, answers-file consent flags, PEP 508 pin rendering ([6533724](https://github.com/srobroek/project-setup/commit/6533724880c29cc46434c78add17c6a54df26d14))
+* **project-setup:** project-local frozen plan path with unconditional wipe + generic consent flags ([10e15a0](https://github.com/srobroek/project-setup/commit/10e15a04fa5c2de2058396a3e6fd4feb3a6343be))
+
 ## [0.3.0](https://github.com/srobroek/project-setup/compare/project-setup-v0.2.0...project-setup-v0.3.0) (2026-06-29)
 
 
