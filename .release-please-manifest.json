@@ -21,7 +21,7 @@
   "skills/project-setup/modules/package-add": "1.0.0",
   "skills/project-setup/modules/precommit-setup": "1.0.0",
   "skills/project-setup/modules/quality-hooks": "1.0.0",
-  "skills/project-setup/modules/readme-draft": "1.0.0",
+  "skills/project-setup/modules/readme-draft": "1.1.0",
   "skills/project-setup/modules/speckit-bridge": "1.0.0",
   "skills/project-setup/modules/stack-adr": "1.0.0"
 }
