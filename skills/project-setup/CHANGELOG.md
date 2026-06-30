@@ -8,6 +8,14 @@
 * pre-resolved deps now materialize, inert gate flags warn, version drift guarded ([710115b](https://github.com/srobroek/project-setup/commit/710115b0c9c08cce0b906b9db039c241497040f1))
 * **project-setup:** inert gate flags warn instead of hard-erroring; sync apm.yml version; add drift guard ([cc776df](https://github.com/srobroek/project-setup/commit/cc776df90eb1d1ba50a5ba72a394fbc05c5ac1a6))
 
+## [0.3.3](https://github.com/srobroek/project-setup/compare/project-setup-v0.3.2...project-setup-v0.3.3) (2026-06-30)
+
+
+### Bug Fixes
+
+* pre-resolved deps now materialize, inert gate flags warn, version drift guarded ([710115b](https://github.com/srobroek/project-setup/commit/710115b0c9c08cce0b906b9db039c241497040f1))
+* **project-setup:** inert gate flags warn instead of hard-erroring; sync apm.yml version; add drift guard ([cc776df](https://github.com/srobroek/project-setup/commit/cc776df90eb1d1ba50a5ba72a394fbc05c5ac1a6))
+
 ## [0.3.2](https://github.com/srobroek/project-setup/compare/project-setup-v0.3.1...project-setup-v0.3.2) (2026-06-29)
 
 
