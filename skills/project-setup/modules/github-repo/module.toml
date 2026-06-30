@@ -7,7 +7,7 @@ author = "Sjors Robroek"
 [module]
 id = "github-repo"
 name = "GitHub repository"
-version = "1.0.0"
+version = "1.0.0"  # x-release-please-version
 description = "Create a GitHub repository and wire the origin remote via gh or gh-api.py."
 default_enabled = false
 reconcile = false

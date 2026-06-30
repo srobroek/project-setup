@@ -7,7 +7,7 @@ author = "Sjors Robroek"
 [module]
 id = "stack-adr"
 name = "Stack decision record"
-version = "1.1.0"
+version = "1.1.0"  # x-release-please-version
 description = "Write a human-readable STACK.md (or ADR) from frozen stack decisions, and run a reproduce-only staleness advisory for pinned deps."
 # opt-in (spec 012 Decision J amended 2026-06-28): the stack record's value is tied
 # to a lang-* resolver, so it is enabled alongside a resolver rather than for bare
