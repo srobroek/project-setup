@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1](https://github.com/srobroek/project-setup/compare/lang-ts-v1.2.0...lang-ts-v1.2.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* deterministic scaffolding — correct package identity, installable manifests, valid CI, enforced interview ([fed956f](https://github.com/srobroek/project-setup/commit/fed956f22f978804b5f4ffece839c85e4e8b9324))
+* **lang-ts:** set package.json name from project_name answer ([1b07675](https://github.com/srobroek/project-setup/commit/1b076756c4f98d5a95cab2796c68ebfe0047c81a))
+
 ## [1.2.0](https://github.com/srobroek/project-setup/compare/lang-ts-v1.1.0...lang-ts-v1.2.0) (2026-06-30)
 
 
