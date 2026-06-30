@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1](https://github.com/srobroek/project-setup/compare/lang-python-v1.2.0...lang-python-v1.2.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* deterministic scaffolding — correct package identity, installable manifests, valid CI, enforced interview ([fed956f](https://github.com/srobroek/project-setup/commit/fed956f22f978804b5f4ffece839c85e4e8b9324))
+* **lang-python:** name package from project_name answer; installable build-system; sync description ([f3f24e7](https://github.com/srobroek/project-setup/commit/f3f24e727084dd2e2e18f759470ac352ac3e99b9))
+
 ## [1.2.0](https://github.com/srobroek/project-setup/compare/lang-python-v1.1.1...lang-python-v1.2.0) (2026-06-30)
 
 
