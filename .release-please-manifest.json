@@ -6,7 +6,7 @@
   "skills/project-setup/modules/codex-config": "1.0.0",
   "skills/project-setup/modules/core-identity": "1.1.0",
   "skills/project-setup/modules/dirs-scaffold": "1.0.0",
-  "skills/project-setup/modules/env-example": "1.1.0",
+  "skills/project-setup/modules/env-example": "1.1.1",
   "skills/project-setup/modules/git-init": "1.0.0",
   "skills/project-setup/modules/github-repo": "1.0.0",
   "skills/project-setup/modules/gitignore-generate": "1.1.0",
