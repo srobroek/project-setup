@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.2](https://github.com/srobroek/project-setup/compare/agents-md-v1.0.1...agents-md-v1.0.2) (2026-06-30)
+
+
+### Bug Fixes
+
+* **agents-md:** reference infrastructure/ (the dir dirs-scaffold creates), not infra/ ([4498b3f](https://github.com/srobroek/project-setup/commit/4498b3f1472100eb555eebbed3cb740f5f297376))
+* deterministic scaffolding — correct package identity, installable manifests, valid CI, enforced interview ([fed956f](https://github.com/srobroek/project-setup/commit/fed956f22f978804b5f4ffece839c85e4e8b9324))
+
 ## [1.0.1](https://github.com/srobroek/project-setup/compare/agents-md-v1.0.0...agents-md-v1.0.1) (2026-06-30)
 
 
