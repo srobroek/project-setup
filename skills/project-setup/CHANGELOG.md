@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/srobroek/project-setup/compare/project-setup-v0.3.3...project-setup-v0.4.0) (2026-06-30)
+
+
+### Features
+
+* **project-setup:** --check-answers preflight + write-if-absent treats empty files as absent ([1706a92](https://github.com/srobroek/project-setup/commit/1706a92fdd066ad95414149ba3349981bba08c3f))
+
+
+### Bug Fixes
+
+* deterministic scaffolding — correct package identity, installable manifests, valid CI, enforced interview ([fed956f](https://github.com/srobroek/project-setup/commit/fed956f22f978804b5f4ffece839c85e4e8b9324))
+
 ## [0.3.3](https://github.com/srobroek/project-setup/compare/project-setup-v0.3.2...project-setup-v0.3.3) (2026-06-30)
 
 
