@@ -180,6 +180,7 @@ def _do_manifest(sdk, inputs, args, *, name: str, lang: str, dir_: str, project_
     package_manifest_type: str = inputs.get_str("package_manifest_type", default="")
     pinned_deps: list[str] = inputs.get_list("pinned_deps", default=[])
     framework: str = inputs.get_str("framework", default="")
+    go_version: str = inputs.get_str("go_version", default="")
 
     target_dir = project_dir / dir_ / name
     target_rel = f"{dir_}/{name}"
@@ -275,7 +276,9 @@ def _do_manifest(sdk, inputs, args, *, name: str, lang: str, dir_: str, project_
                 return 0
 
     # Render the per-package manifest body
-    manifest_body = _render_manifest(lang, package_manifest_type, name, framework, pinned_deps)
+    manifest_body = _render_manifest(
+        lang, package_manifest_type, name, framework, pinned_deps, go_version=go_version
+    )
 
     # Manifest path: {dir}/{name}/{package_manifest_type}
     manifest_rel = f"{target_rel}/{package_manifest_type}"
@@ -324,12 +327,20 @@ def _do_manifest(sdk, inputs, args, *, name: str, lang: str, dir_: str, project_
     return 0
 
 
+# Default Go language version for a generated go.mod when the caller supplies
+# none. A bare major.minor line (no patch) is the go.mod convention. Bump this
+# default as Go advances; it is overridable via the `go_version` answer so the
+# value is never silently frozen.
+_DEFAULT_GO_VERSION = "1.23"
+
+
 def _render_manifest(
     lang: str,
     manifest_type: str,
     name: str,
     framework: str,
     pinned_deps: list[str],
+    go_version: str = "",
 ) -> str:
     """Render a per-package manifest body deterministically.
 
@@ -375,8 +386,13 @@ def _render_manifest(
         }
         return json.dumps(obj, indent=2, sort_keys=False) + "\n"
     elif lang == "go":
-        # go.mod stub
-        return f'module {name}\n\ngo 1.22\n'
+        # go.mod stub. The go directive uses the supplied go_version (a bare
+        # major.minor line per go.mod convention), defaulting to a current line
+        # rather than a frozen literal.
+        gv = (go_version or "").strip() or _DEFAULT_GO_VERSION
+        # Tolerate a leading 'go ' or 'v' prefix in the answer.
+        gv = gv.removeprefix("go").strip().lstrip("v") or _DEFAULT_GO_VERSION
+        return f'module {name}\n\ngo {gv}\n'
     elif lang == "rust":
         # Cargo.toml stub with dependencies
         deps_lines = "\n".join(

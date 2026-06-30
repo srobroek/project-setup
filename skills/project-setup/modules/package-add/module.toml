@@ -43,6 +43,15 @@ prompt = "Resolve and write a per-package manifest with aligned version pins?"
 default = false
 required = false
 
+# Go language version for a generated go.mod (lang=go only). Bare major.minor
+# per go.mod convention; empty = a current default (not a frozen literal).
+[[inputs]]
+key = "go_version"
+type = "string"
+prompt = "Go version for the go.mod 'go' directive (e.g. 1.23), if lang=go?"
+default = ""
+required = false
+
 # --- Tier-2 resolver steps (only when resolve_stack == true) ---
 
 # G6 — agent step aligns the new package's pins with already-frozen sibling pins

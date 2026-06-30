@@ -264,6 +264,7 @@ def _frozen_plan_manifest(
     lang: str = "python",
     dir_: str = "packages",
     pinned_deps: list | None = None,
+    go_version: str = "",
 ) -> Path:
     """Build a frozen plan for the manifest step."""
     plan = {
@@ -282,6 +283,7 @@ def _frozen_plan_manifest(
                     "dir": dir_,
                     "pinned_deps": pinned_deps or [],
                     "resolve_stack": False,
+                    "go_version": go_version,
                 },
                 "steps": [{"id": "manifest", "kind": "python"}],
             }
@@ -320,6 +322,39 @@ def test_python_manifest_includes_build_system(tmp_path):
     assert "uv_build" in content, (
         f"uv_build backend missing from pyproject.toml:\n{content}"
     )
+
+
+def test_go_mod_uses_default_version_when_unset(tmp_path):
+    """go.mod 'go' directive uses a current default (not the old hardcoded 1.22) when no go_version is given."""
+    project = tmp_path / "monorepo"
+    project.mkdir()
+    (project / "packages").mkdir()
+
+    plan = _frozen_plan_manifest(tmp_path, name="mysvc", lang="go", dir_="packages")
+    proc = _run_manifest(project, plan)
+    assert proc.returncode == 0, proc.stderr
+
+    gomod = (project / "packages" / "mysvc" / "go.mod").read_text()
+    assert "module mysvc" in gomod, gomod
+    # Must NOT be frozen at the old hardcoded 1.22, and must be a bare major.minor line.
+    assert "go 1.22\n" not in gomod, f"go.mod still hardcoded to 1.22:\n{gomod}"
+    import re as _re
+    assert _re.search(r"^go \d+\.\d+$", gomod, _re.MULTILINE), f"no bare 'go X.Y' line:\n{gomod}"
+
+
+def test_go_mod_honors_go_version_answer(tmp_path):
+    """An explicit go_version answer is written into the go.mod 'go' directive (prefix-tolerant)."""
+    project = tmp_path / "monorepo"
+    project.mkdir()
+    (project / "packages").mkdir()
+
+    # 'go 1.21' prefix should be tolerated → 'go 1.21'
+    plan = _frozen_plan_manifest(tmp_path, name="mysvc", lang="go", dir_="packages", go_version="go 1.21")
+    proc = _run_manifest(project, plan)
+    assert proc.returncode == 0, proc.stderr
+
+    gomod = (project / "packages" / "mysvc" / "go.mod").read_text()
+    assert "go 1.21\n" in gomod, f"go_version answer not honored:\n{gomod}"
 
 
 def test_ts_manifest_has_no_build_system(tmp_path):

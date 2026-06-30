@@ -628,6 +628,53 @@ def test_use_just_false_drops_just_commands(tmp_path):
     assert any("use_just=false" in w for w in warnings)
 
 
+# ── BUG F: renderer robustness for deep nesting + structural FIXME header ─────
+
+def test_render_ci_yaml_deep_nesting_and_header_comments():
+    """The recursive renderer handles strategy.matrix lists + step `with:` maps +
+    bool values together, and emits header_comments structurally after `name:`
+    (no post-hoc string surgery). Validated stdlib-only (no pyyaml)."""
+    ci_mod = _load_module_py()
+    plan_dict = {
+        "name": "CI",
+        "on": {"push": {"branches": ["main"]}, "workflow_dispatch": None},
+        "jobs": {
+            "test": {
+                "name": "Test",
+                "runs-on": "ubuntu-latest",
+                "strategy": {"matrix": {"python-version": ["3.12", "3.13"]}},
+                "steps": [
+                    {"uses": "actions/checkout@v4"},
+                    {"uses": "astral-sh/setup-uv@v5",
+                     "with": {"python-version": "3.13", "enable-cache": True}},
+                    {"name": "Run tests", "run": "uv run pytest"},
+                ],
+            }
+        },
+    }
+    out = ci_mod.render_ci_yaml(plan_dict, header_comments=["# FIXME: floating ref foo@main"])
+    lines = out.splitlines()
+
+    # No stringified-dict leak anywhere.
+    assert "{'python-version'" not in out, out
+
+    # Header comment is emitted right after the name: line, structurally.
+    assert lines[0] == "name: CI"
+    assert lines[1] == "# FIXME: floating ref foo@main", lines[:3]
+
+    # strategy.matrix list rendered as indented YAML list items.
+    assert any(l.strip() == "- '3.12'" for l in lines), out
+    assert any(l.strip() == "- '3.13'" for l in lines), out
+
+    # step `with:` is a block header followed by an indented mapping incl. a bool.
+    wi = next(i for i, l in enumerate(lines) if l.strip() == "with:")
+    assert lines[wi + 1].strip().startswith("python-version:"), lines[wi + 1]
+    assert lines[wi + 2].strip() == "enable-cache: true", lines[wi + 2]
+
+    # workflow_dispatch (None trigger) renders as a bare key, not `null`.
+    assert any(l.strip() == "workflow_dispatch:" for l in lines), out
+
+
 # ── Adversarial fix 1: with: dict must render as YAML mapping, not string ────
 
 def test_render_ci_yaml_with_block_is_yaml_mapping():
