@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.3](https://github.com/srobroek/project-setup/compare/lang-go-v1.0.2...lang-go-v1.0.3) (2026-06-30)
+
+
+### Bug Fixes
+
+* **lang-go:** nest entrypoint at cmd/&lt;binary&gt;/main.go so go build works ([772cbb7](https://github.com/srobroek/project-setup/commit/772cbb72de7f015cd74a821c90bc6215b78dd551))
+* **lang-go:** nest entrypoint at cmd/&lt;binary&gt;/main.go so go build works ([3619bc1](https://github.com/srobroek/project-setup/commit/3619bc1bdbb1f54dcd727a243d7bd52109b35088))
+
 ## [1.0.2](https://github.com/srobroek/project-setup/compare/lang-go-v1.0.1...lang-go-v1.0.2) (2026-06-30)
 
 
