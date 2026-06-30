@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.3](https://github.com/srobroek/project-setup/compare/agents-md-v1.0.2...agents-md-v1.0.3) (2026-06-30)
+
+
+### Bug Fixes
+
+* **agents-md:** fill PROJECT DESCRIPTION + correct Path Mapping to real dirs ([58df219](https://github.com/srobroek/project-setup/commit/58df219465cac86f409bc4bebc095efa1b6400cf))
+* fill AGENTS.md, language-aware justfile, optional initial git commit ([b884adc](https://github.com/srobroek/project-setup/commit/b884adcdd473f882d04fa27ee161f3c839bb638f))
+
 ## [1.0.2](https://github.com/srobroek/project-setup/compare/agents-md-v1.0.1...agents-md-v1.0.2) (2026-06-30)
 
 
