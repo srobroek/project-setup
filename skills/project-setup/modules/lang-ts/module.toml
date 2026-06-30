@@ -7,7 +7,7 @@ author = "Sjors Robroek"
 [module]
 id = "lang-ts"
 name = "TypeScript language overlay"
-version = "1.0.0"
+version = "1.1.0"
 description = "Add TypeScript tooling (bun/pnpm, tsconfig, biome, prettier) to a scaffolded project. Appends Node .gitignore entries and biome/prettier pre-commit hooks."
 default_enabled = false
 reconcile = true
@@ -78,6 +78,33 @@ required = false
 [[inputs]]
 key = "node_line"
 type = "string"
+default = ""
+required = false
+
+# pinned_deps / dev_deps / package_manager_pin are normally produced by the
+# `resolve` agent step and folded in via answers_to_persist (which runs AFTER
+# answer resolution, so it overrides anything supplied here). They are also
+# declared as optional inputs so a pre-resolving agent (or a scripted --answers
+# run) can supply exact name@version pins directly without the live resolve
+# step. Empty by default → no deps written.
+[[inputs]]
+key = "pinned_deps"
+type = "list"
+prompt = "Pinned runtime dependencies (name@version), if pre-resolved"
+default = []
+required = false
+
+[[inputs]]
+key = "dev_deps"
+type = "list"
+prompt = "Pinned dev dependencies (name@version), if pre-resolved"
+default = []
+required = false
+
+[[inputs]]
+key = "package_manager_pin"
+type = "string"
+prompt = "Pinned package manager version, if pre-resolved"
 default = ""
 required = false
 
