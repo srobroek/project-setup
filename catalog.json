@@ -54,7 +54,7 @@
     },
     {
       "name": "git-init",
-      "description": "Run git init in the project directory and clear macOS provenance xattr on .git/.",
+      "description": "Run git init in the project directory and clear macOS provenance xattr on .git/. Optionally commits the initial scaffold once all other modules have written their files.",
       "locator": "srobroek/project-setup/skills/project-setup/modules/git-init",
       "category": "",
       "ref": "main"
