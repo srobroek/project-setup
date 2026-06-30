@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/srobroek/project-setup/compare/gitignore-generate-v1.1.0...gitignore-generate-v1.1.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* pre-resolved deps now materialize, inert gate flags warn, version drift guarded ([710115b](https://github.com/srobroek/project-setup/commit/710115b0c9c08cce0b906b9db039c241497040f1))
+
 ## [1.1.0](https://github.com/srobroek/project-setup/compare/gitignore-generate-v1.0.0...gitignore-generate-v1.1.0) (2026-06-29)
 
 
