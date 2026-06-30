@@ -7,7 +7,7 @@ author = "Sjors Robroek"
 [module]
 id = "precommit-setup"
 name = "Pre-commit configuration"
-version = "1.0.0"  # x-release-please-version
+version = "1.0.1"  # x-release-please-version
 description = "Scaffold .pre-commit-config.yaml with commit-stage hygiene + pre-push secret scan, and vendor the close-keywords commit-msg scripts into .pre-commit-hooks/."
 default_enabled = false
 reconcile = true
