@@ -28,14 +28,13 @@
 
 | Path | Contents |
 |------|----------|
-| `api/contracts/` | API contracts, OpenAPI fragments |
-| `docs/` | Documentation, ADRs |
+| `docs/` | Documentation — `architecture/`, `decisions/` (ADRs), `api/`, `research/`, `runbooks/`, `product/`, `engineering/`, `operations/` |
 | `specs/` | Feature specifications (speckit) |
-| `research/` | Technology decisions, alternatives analysis |
-| `infrastructure/` | Infrastructure config (Terraform modules, stacks, environments) |
+| `infrastructure/` | Infrastructure config — `environments/` and `terraform/{modules,stacks,environments}/` |
 | `tests/` | Integration and E2E tests |
 | `scripts/` | Build tooling, automation |
 | `assets/` | Static files |
+| `archive/` | Retired / archived material |
 
 ## Build & Run
 

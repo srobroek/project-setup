@@ -30,6 +30,15 @@ type = "string"
 prompt = "Project name"
 required = true
 
+# Same one-line description supplied to core-identity; fills the AGENTS.md
+# PROJECT DESCRIPTION placeholder instead of leaving a TODO comment.
+[[inputs]]
+key = "description"
+type = "string"
+prompt = "One-line project description (for the AGENTS.md header)"
+default = ""
+required = false
+
 [[inputs]]
 key = "org"
 type = "string"

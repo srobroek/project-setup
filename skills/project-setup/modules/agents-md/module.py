@@ -76,16 +76,27 @@ def _load_sdk():
     return mod
 
 
-def _render(layout: str, project_name: str, org: str) -> str:
+def _render(layout: str, project_name: str, org: str, description: str = "") -> str:
     """Load the appropriate template and substitute placeholders.
 
     Single-pass substitution via one regex alternation so a user value that
     happens to contain another placeholder token (e.g. a project literally named
     "myORG-api") cannot be double-substituted. PROJECT_NAME precedes ORG in the
     alternation so the longer token wins on the literal ``ORG/PROJECT_NAME`` line.
+
+    When *description* is supplied, the ``PROJECT DESCRIPTION`` placeholder comment
+    is replaced with the real one-line description (the value is already known from
+    core-identity, so leaving it as a TODO comment is needless drift). When empty,
+    the comment is left intact for a later agent fill.
     """
     template_file = _TEMPLATES / ("monorepo.md" if layout == "monorepo" else "single.md")
     body = template_file.read_text(encoding="utf-8")
+    if description.strip():
+        body = body.replace(
+            "<!-- PROJECT DESCRIPTION: to be filled by agent -->",
+            description.strip(),
+            1,
+        )
     mapping = {"PROJECT_NAME": project_name, "ORG": org}
     pattern = re.compile("|".join(re.escape(k) for k in mapping))
     return pattern.sub(lambda m: mapping[m.group(0)], body)
@@ -100,8 +111,9 @@ def _do_write(sdk, inputs, args) -> int:
     layout = inputs.get_choice("layout", default="single")
     project_name = inputs.get_str("project_name", default="PROJECT_NAME")
     org = inputs.get_str("org", default="ORG")
+    description = inputs.get_str("description", default="")
 
-    body = _render(layout, project_name, org)
+    body = _render(layout, project_name, org, description)
 
     diff = sdk.idempotent_write(
         "AGENTS.md",

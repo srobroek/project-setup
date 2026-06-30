@@ -36,7 +36,13 @@ def _load(name: str):
     return mod
 
 
-def _frozen_plan(tmp: Path, layout: str = "single", project_name: str = "my-app", org: str = "acme") -> Path:
+def _frozen_plan(
+    tmp: Path,
+    layout: str = "single",
+    project_name: str = "my-app",
+    org: str = "acme",
+    description: str = "",
+) -> Path:
     plan = {
         "schema_version": 1,
         "mode": "init",
@@ -51,6 +57,7 @@ def _frozen_plan(tmp: Path, layout: str = "single", project_name: str = "my-app"
                     "layout": layout,
                     "project_name": project_name,
                     "org": org,
+                    "description": description,
                 },
                 "steps": [{"id": "write", "kind": "python"}],
             }
@@ -479,3 +486,94 @@ def test_manifest_has_all_four_steps():
     input_keys = [i.key for i in mani.inputs]
     assert "architecture_md" in input_keys
     assert "agent_editable_globs" in input_keys
+
+
+# --------------------------------------------------------------------------- #
+# Task A — description fill + Path Mapping correctness                        #
+# --------------------------------------------------------------------------- #
+
+def test_description_filled_when_supplied(tmp_path):
+    """When description is given it appears in AGENTS.md and the placeholder is gone."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    desc = "A fast REST API for widget management"
+    plan = _frozen_plan(tmp_path, description=desc)
+    proc = _run(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    content = (project / "AGENTS.md").read_text()
+    assert desc in content
+    assert "PROJECT DESCRIPTION: to be filled by agent" not in content
+
+
+def test_description_placeholder_remains_when_empty(tmp_path):
+    """When description is empty the placeholder comment is preserved."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    plan = _frozen_plan(tmp_path, description="")
+    proc = _run(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    content = (project / "AGENTS.md").read_text()
+    assert "PROJECT DESCRIPTION: to be filled by agent" in content
+
+
+def test_single_layout_path_mapping_no_phantom_paths(tmp_path):
+    """Single-layout Path Mapping must not reference api/contracts/ or a standalone research/ row."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    plan = _frozen_plan(tmp_path)
+    proc = _run(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    content = (project / "AGENTS.md").read_text()
+
+    # These paths were removed in the template fix — must not appear.
+    assert "api/contracts/" not in content
+    # "research/" as a standalone top-level row is gone; it now lives under docs/.
+    # We check there is no row starting with `| `research/` |` (top-level dir).
+    for line in content.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("| `research/`"):
+            raise AssertionError(
+                f"Standalone research/ row found in Path Mapping: {line!r}"
+            )
+
+
+def test_single_layout_path_mapping_dirs_match_base_dirs(tmp_path):
+    """Every top-level path listed in the single-layout Path Mapping table must
+    be a real first-level entry in dirs-scaffold._BASE_DIRS (or a prefix of one),
+    so the doc can't drift from what the scaffold actually creates."""
+    import importlib.util as _ilu
+
+    # Load dirs-scaffold to get _BASE_DIRS without running it as a script.
+    _dirs_mod_path = _PLUGIN_ROOT / "modules" / "dirs-scaffold" / "module.py"
+    _spec = _ilu.spec_from_file_location("dirs_scaffold_mod", _dirs_mod_path)
+    assert _spec and _spec.loader
+    _dsmod = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_dsmod)  # type: ignore[union-attr]
+    base_dirs: list[str] = _dsmod._BASE_DIRS  # type: ignore[attr-defined]
+
+    # Top-level dir names from _BASE_DIRS (first path segment only).
+    scaffold_roots = {d.split("/")[0] for d in base_dirs}
+
+    # Render the single-layout template.
+    project = tmp_path / "proj"
+    project.mkdir()
+    plan = _frozen_plan(tmp_path)
+    _run(project, plan)
+    content = (project / "AGENTS.md").read_text()
+
+    # Extract rows from the Path Mapping table (lines like | `dir/` | ... |).
+    import re
+    path_rows = re.findall(r"\|\s+`([^`]+)`", content)
+    # Filter to rows that look like bare top-level dirs (no leading src/).
+    top_level_claimed = [
+        p.rstrip("/") for p in path_rows
+        if "/" not in p.rstrip("/")  # top-level only
+        and not p.startswith(".")
+    ]
+
+    # Every claimed top-level dir must exist in scaffold_roots.
+    for claimed in top_level_claimed:
+        assert claimed in scaffold_roots, (
+            f"Path Mapping row `{claimed}/` not in dirs-scaffold._BASE_DIRS roots: "
+            f"{sorted(scaffold_roots)}"
+        )
