@@ -261,6 +261,18 @@ def _build_parser() -> argparse.ArgumentParser:
             "any subdir embedded in the locator string."
         ),
     )
+    p.add_argument(
+        "--enable",
+        action="store_true",
+        default=False,
+        help=(
+            "with --add-module: also add the discovered module id(s) to the "
+            "committed .project-setup/answers.toml [modules].enabled list so "
+            "they take effect on the next run (writing sources.toml flips the "
+            "project to reproduce mode, where the --answers `enabled` list is "
+            "ignored)."
+        ),
+    )
 
     # ── List addon catalog ────────────────────────────────────────────────────── #
     p.add_argument(
@@ -572,25 +584,31 @@ def _scaffold_new_module(module_id: str, dest_dir: Path) -> int:
 # Add-module helpers (CLI commands --add-module / --add-module-from-catalog)  #
 # --------------------------------------------------------------------------- #
 
-def _read_sources_toml(project_dir: Path) -> tuple[list[dict], str]:
-    """Read existing .project-setup/sources.toml and return (sources, skill_version).
+def _read_sources_toml(project_dir: Path) -> tuple[list[dict], str, dict]:
+    """Read existing .project-setup/sources.toml.
 
-    Returns ([], "") when the file is absent or unreadable.  Never raises.
+    Returns ``(sources, skill_version, meta)`` where:
+    - *sources* is the full list of [[source]] records (all fields preserved).
+    - *skill_version* is the ``[meta].skill_version`` string (or "").
+    - *meta* is the full ``[meta]`` dict (preserves unknown keys for round-trip).
+
+    Returns ``([], "", {})`` when the file is absent or unreadable.  Never raises.
     """
     import tomllib as _tomllib
 
     src_toml = project_dir / ".project-setup" / "sources.toml"
     if not src_toml.is_file():
-        return [], ""
+        return [], "", {}
     try:
         with open(src_toml, "rb") as fh:
             data = _tomllib.load(fh)
     except Exception:
-        return [], ""
-    skill_version = data.get("meta", {}).get("skill_version", "") or ""
+        return [], "", {}
+    meta: dict = data.get("meta", {}) or {}
+    skill_version = meta.get("skill_version", "") or ""
     raw_sources = data.get("source", [])
     sources = [s for s in raw_sources if isinstance(s, dict)]
-    return sources, skill_version
+    return sources, skill_version, meta
 
 
 def _sources_dedup_key(source: dict) -> tuple[str, str, str]:
@@ -616,8 +634,45 @@ def _sources_dedup_key(source: dict) -> tuple[str, str, str]:
         return (raw, ref, subdir)
 
 
-def _cmd_add_module(project_dir: Path, locator_str: str, ref: str | None, subdir: str | None) -> int:
+def _enable_modules_in_answers(project_dir: Path, module_ids: list[str]) -> None:
+    """Add *module_ids* to the committed answers.toml [modules].enabled list.
+
+    Unions with any existing enabled set (preserving order-independence via the
+    helper's sort) and preserves [module.*] answer tables. Used by --add-module
+    --enable so a just-registered source's module is actually enabled on the next
+    (reproduce-mode) run — writing sources.toml flips the project to reproduce
+    mode, where the enabled set is read from committed answers.toml, NOT from a
+    --answers file's `enabled` list.
+    """
+    import tomllib as _tomllib
+    import persist as _persist_mod
+
+    answers_path = project_dir / ".project-setup" / "answers.toml"
+    existing_enabled: list[str] = []
+    if answers_path.is_file():
+        try:
+            with open(answers_path, "rb") as fh:
+                existing = _tomllib.load(fh)
+            cur = existing.get("modules", {}).get("enabled", [])
+            if isinstance(cur, list):
+                existing_enabled = [str(x) for x in cur]
+        except Exception:
+            pass
+    merged = sorted(set(existing_enabled) | set(module_ids))
+    _persist_mod.write_modules_enabled(project_dir, merged, provenance="flag")
+
+
+def _cmd_add_module(
+    project_dir: Path,
+    locator_str: str,
+    ref: str | None,
+    subdir: str | None,
+    enable: bool = False,
+) -> int:
     """Implement --add-module: fetch, validate, register in sources.toml.
+
+    When *enable* is True, also add the discovered module id(s) to the committed
+    answers.toml [modules].enabled list so they take effect on the next run.
 
     Returns 0 on success, 1 on error (messages printed to stderr).
     """
@@ -676,7 +731,7 @@ def _cmd_add_module(project_dir: Path, locator_str: str, ref: str | None, subdir
 
     # ── 4. Read existing sources.toml + dedupe + write ─────────────────────── #
     project_dir.mkdir(parents=True, exist_ok=True)
-    existing_sources, skill_version = _read_sources_toml(project_dir)
+    existing_sources, skill_version, existing_meta = _read_sources_toml(project_dir)
 
     # Build the new source record.
     new_record: dict = {"locator": locator_str}
@@ -696,26 +751,51 @@ def _cmd_add_module(project_dir: Path, locator_str: str, ref: str | None, subdir
                 f".project-setup/sources.toml — no change needed.\n"
                 f"Available module ids from this source: {', '.join(module_ids)}",
             )
+            if enable:
+                _enable_modules_in_answers(project_dir, module_ids)
+                print(
+                    f"Module id(s) added to .project-setup/answers.toml [modules].enabled: "
+                    f"{', '.join(module_ids)}\n"
+                    f"They will run on the next invocation (reproduce mode).",
+                )
             return 0
 
     merged = existing_sources + [new_record]
-    _persist_mod.write_sources_toml(project_dir, merged, skill_version=skill_version)
+    _persist_mod.write_sources_toml(project_dir, merged, skill_version=skill_version, meta=existing_meta)
 
     sources_path = project_dir / ".project-setup" / "sources.toml"
-    print(
-        f"\n"
-        f"Registered source in {sources_path}\n"
-        f"Available module ids: {', '.join(module_ids)}\n"
-        f"\n"
-        f"Next steps:\n"
-        f"  1. Add the module id(s) to the 'enabled' list in your answers file\n"
-        f"     or pass them via --answers with \"enabled\": [...]\n"
-        f"  2. Run the runner normally — it will fetch and discover the source\n"
-        f"     automatically on the next run.\n"
-        f"\n"
-        f"  Tip: use --add-module-from-catalog to browse available modules in\n"
-        f"  configured catalogs, or --list-catalog to see the full catalog.",
-    )
+    if enable:
+        _enable_modules_in_answers(project_dir, module_ids)
+        print(
+            f"\n"
+            f"Registered source in {sources_path}\n"
+            f"Available module ids: {', '.join(module_ids)}\n"
+            f"\n"
+            f"Module id(s) added to .project-setup/answers.toml [modules].enabled: "
+            f"{', '.join(module_ids)}\n"
+            f"They will run on the next invocation (reproduce mode — sources.toml is now present).",
+        )
+    else:
+        print(
+            f"\n"
+            f"Registered source in {sources_path}\n"
+            f"Available module ids: {', '.join(module_ids)}\n"
+            f"\n"
+            f"Next steps:\n"
+            f"  Writing sources.toml has flipped this project to reproduce mode.\n"
+            f"  In reproduce mode the enabled set is read from the COMMITTED\n"
+            f"  .project-setup/answers.toml [modules].enabled — the --answers\n"
+            f"  file's 'enabled' list is ignored.\n"
+            f"\n"
+            f"  To enable the module(s) either:\n"
+            f"    a) Re-run with --enable:  --add-module {locator_str!r} --enable\n"
+            f"    b) Add the id(s) manually to .project-setup/answers.toml:\n"
+            f"       [modules]\n"
+            f"       enabled = {module_ids!r}\n"
+            f"\n"
+            f"  Tip: use --add-module-from-catalog to browse available modules in\n"
+            f"  configured catalogs, or --list-catalog to see the full catalog.",
+        )
     return 0
 
 
@@ -881,6 +961,7 @@ def main(argv: list[str] | None = None) -> int:
             locator_str=args.add_module,
             ref=args.ref,
             subdir=args.subdir,
+            enable=args.enable,
         )
 
     # ── --add-module-from-catalog: catalog look-up + register and exit ────────── #

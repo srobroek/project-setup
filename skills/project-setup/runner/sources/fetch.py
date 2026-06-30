@@ -82,7 +82,12 @@ def _run_git(*args: str, cwd: Path | None = None) -> tuple[bool, str]:
 
 def _clone_or_update(locator: "Locator", cache_dir: Path) -> FetchResult:
     """Clone into *cache_dir* (if absent) or fetch + checkout *locator.ref*."""
-    from .locator import cache_key  # local import to avoid circular at module level
+    # Use the module-level `_locator_mod` (a plain `import locator`, resolved via
+    # sys.path) — NOT a relative `from .locator import ...`, which raises
+    # "attempted relative import with no known parent package" when this module is
+    # loaded top-level (as the CLI does: `import fetch`). That import error was
+    # swallowed by fetch_source's broad except, silently breaking ALL git locators.
+    cache_key = _locator_mod.cache_key
 
     key = cache_key(locator)
     repo_dir = cache_dir / key

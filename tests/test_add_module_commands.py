@@ -557,3 +557,218 @@ class TestModuleDiscoverableAfterAdd:
         loc = _loc_mod.parse_locator(sources[0]["locator"])
         assert loc.kind == "local"
         assert loc.origin == str(modules_root)
+
+
+# ---------------------------------------------------------------------------
+# --add-module --enable: writes module id into answers.toml [modules].enabled
+# ---------------------------------------------------------------------------
+
+class TestAddModuleEnable:
+    """--add-module --enable adds the module id to answers.toml enabled list."""
+
+    def _read_answers_toml(self, project_dir: Path) -> dict:
+        answers = project_dir / ".project-setup" / "answers.toml"
+        if not answers.is_file():
+            return {}
+        with open(answers, "rb") as fh:
+            return tomllib.load(fh)
+
+    def test_enable_writes_module_id_to_answers(self, tmp_path):
+        """--add-module --enable writes the module id into answers.toml enabled."""
+        modules_root = tmp_path / "my-modules"
+        _make_module_dir(modules_root, "my-test-module")
+
+        cli = _load_cli_fresh()
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+
+        rc = cli.main([
+            "--project-dir", str(project_dir),
+            "--add-module", str(modules_root),
+            "--enable",
+        ])
+        assert rc == 0
+
+        data = self._read_answers_toml(project_dir)
+        enabled = data.get("modules", {}).get("enabled", [])
+        assert "my-test-module" in enabled
+
+    def test_enable_second_add_unions_ids(self, tmp_path):
+        """A second --add-module --enable unions rather than replacing enabled."""
+        root_a = tmp_path / "source-a"
+        root_b = tmp_path / "source-b"
+        _make_module_dir(root_a, "module-a")
+        _make_module_dir(root_b, "module-b")
+
+        cli = _load_cli_fresh()
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+
+        cli.main(["--project-dir", str(project_dir), "--add-module", str(root_a), "--enable"])
+        cli.main(["--project-dir", str(project_dir), "--add-module", str(root_b), "--enable"])
+
+        data = self._read_answers_toml(project_dir)
+        enabled = data.get("modules", {}).get("enabled", [])
+        assert "module-a" in enabled, f"module-a missing from enabled: {enabled}"
+        assert "module-b" in enabled, f"module-b missing from enabled: {enabled}"
+
+    def test_enable_preserves_existing_module_answer_table(self, tmp_path):
+        """--enable preserves pre-existing [module.foo] answer tables."""
+        import persist as _persist_mod
+
+        modules_root = tmp_path / "my-modules"
+        _make_module_dir(modules_root, "my-test-module")
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+
+        # Write an existing answers.toml with a [module.foo] answer table.
+        _persist_mod.write_answers_toml(
+            project_dir,
+            answers={"foo": {"key": "value"}},
+            provenance_map={"foo": {"key": "flag"}},
+        )
+
+        cli = _load_cli_fresh()
+        rc = cli.main([
+            "--project-dir", str(project_dir),
+            "--add-module", str(modules_root),
+            "--enable",
+        ])
+        assert rc == 0
+
+        data = self._read_answers_toml(project_dir)
+        # The [module.foo] table must still be there.
+        assert data.get("module", {}).get("foo", {}).get("key") == "value", (
+            f"[module.foo] answer table was dropped: {data}"
+        )
+        # And enabled must contain the new module.
+        enabled = data.get("modules", {}).get("enabled", [])
+        assert "my-test-module" in enabled
+
+    def test_enable_dedup_path_also_writes_answers(self, tmp_path):
+        """--enable on a duplicate (already registered) source still enables it."""
+        modules_root = tmp_path / "my-modules"
+        _make_module_dir(modules_root, "my-test-module")
+
+        cli = _load_cli_fresh()
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+
+        # First call: register (no --enable).
+        cli.main(["--project-dir", str(project_dir), "--add-module", str(modules_root)])
+
+        # Second call: duplicate + --enable.
+        rc = cli.main([
+            "--project-dir", str(project_dir),
+            "--add-module", str(modules_root),
+            "--enable",
+        ])
+        assert rc == 0
+
+        data = self._read_answers_toml(project_dir)
+        enabled = data.get("modules", {}).get("enabled", [])
+        assert "my-test-module" in enabled
+
+    def test_check_answers_counts_enabled_module_after_enable(self, tmp_path):
+        """After --add-module --enable, --check-answers in reproduce mode sees the module."""
+        modules_root = tmp_path / "my-modules"
+        _make_module_dir(modules_root, "my-test-module")
+
+        cli = _load_cli_fresh()
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+
+        # Register + enable in one step.
+        rc = cli.main([
+            "--project-dir", str(project_dir),
+            "--add-module", str(modules_root),
+            "--enable",
+        ])
+        assert rc == 0
+
+        # sources.toml now exists → reproduce mode. --check-answers should
+        # find my-test-module in the enabled set (from committed answers.toml).
+        # We can verify this by reading back answers.toml directly.
+        data = self._read_answers_toml(project_dir)
+        enabled = data.get("modules", {}).get("enabled", [])
+        assert "my-test-module" in enabled, (
+            f"After --add-module --enable, committed answers.toml should have "
+            f"my-test-module in enabled but got: {enabled}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Fix 3: lossless sources.toml round-trip
+# ---------------------------------------------------------------------------
+
+class TestSourcesRoundTrip:
+    """--add-module must not drop unknown [meta] keys or extra source fields."""
+
+    def test_unknown_meta_key_preserved_on_round_trip(self, tmp_path):
+        """A pre-existing [meta] custom_note survives --add-module."""
+        import persist as _persist_mod
+
+        # Create a first module source so sources.toml exists with a custom meta key.
+        root_a = tmp_path / "source-a"
+        root_b = tmp_path / "source-b"
+        _make_module_dir(root_a, "module-a")
+        _make_module_dir(root_b, "module-b")
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+
+        # Write initial sources.toml with an extra [meta] key.
+        _persist_mod.write_sources_toml(
+            project_dir,
+            sources=[{"locator": str(root_a)}],
+            skill_version="1.0.0",
+            meta={"skill_version": "1.0.0", "custom_note": "keep"},
+        )
+
+        cli = _load_cli_fresh()
+        rc = cli.main(["--project-dir", str(project_dir), "--add-module", str(root_b)])
+        assert rc == 0
+
+        src_toml = project_dir / ".project-setup" / "sources.toml"
+        with open(src_toml, "rb") as fh:
+            data = tomllib.load(fh)
+
+        assert data.get("meta", {}).get("custom_note") == "keep", (
+            f"[meta].custom_note was dropped on round-trip: {data.get('meta')}"
+        )
+        assert data.get("meta", {}).get("skill_version") == "1.0.0"
+        assert len(data.get("source", [])) == 2
+
+    def test_extra_source_field_preserved_on_round_trip(self, tmp_path):
+        """An extra field on a [[source]] record survives --add-module."""
+        import persist as _persist_mod
+
+        root_a = tmp_path / "source-a"
+        root_b = tmp_path / "source-b"
+        _make_module_dir(root_a, "module-a")
+        _make_module_dir(root_b, "module-b")
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+
+        # Write initial sources.toml where the first source has an extra field.
+        _persist_mod.write_sources_toml(
+            project_dir,
+            sources=[{"locator": str(root_a), "extra_field": "preserve-me"}],
+        )
+
+        cli = _load_cli_fresh()
+        rc = cli.main(["--project-dir", str(project_dir), "--add-module", str(root_b)])
+        assert rc == 0
+
+        src_toml = project_dir / ".project-setup" / "sources.toml"
+        with open(src_toml, "rb") as fh:
+            data = tomllib.load(fh)
+
+        sources = data.get("source", [])
+        first_source = next((s for s in sources if s.get("locator") == str(root_a)), None)
+        assert first_source is not None, "First source was lost on round-trip"
+        assert first_source.get("extra_field") == "preserve-me", (
+            f"extra_field was dropped on round-trip: {first_source}"
+        )
