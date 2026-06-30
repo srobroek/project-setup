@@ -8,6 +8,14 @@
 * deterministic scaffolding — correct package identity, installable manifests, valid CI, enforced interview ([fed956f](https://github.com/srobroek/project-setup/commit/fed956f22f978804b5f4ffece839c85e4e8b9324))
 * **lang-rust:** name crate from project_name answer via cargo init --name ([288dc12](https://github.com/srobroek/project-setup/commit/288dc12feb9ea366e9ef3ccd6bfe9b8b4ee4017a))
 
+## [1.0.2](https://github.com/srobroek/project-setup/compare/lang-rust-v1.0.1...lang-rust-v1.0.2) (2026-06-30)
+
+
+### Bug Fixes
+
+* deterministic scaffolding — correct package identity, installable manifests, valid CI, enforced interview ([fed956f](https://github.com/srobroek/project-setup/commit/fed956f22f978804b5f4ffece839c85e4e8b9324))
+* **lang-rust:** name crate from project_name answer via cargo init --name ([288dc12](https://github.com/srobroek/project-setup/commit/288dc12feb9ea366e9ef3ccd6bfe9b8b4ee4017a))
+
 ## [1.0.1](https://github.com/srobroek/project-setup/compare/lang-rust-v1.0.0...lang-rust-v1.0.1) (2026-06-30)
 
 
