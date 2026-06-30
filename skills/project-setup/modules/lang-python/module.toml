@@ -15,6 +15,24 @@ reconcile = true
 [order]
 after = ["gitignore-generate", "precommit-setup"]
 
+# Identity inputs — the agent supplies the SAME project name/description it gave
+# core-identity (FrozenInputs is per-module, so each module that needs identity
+# declares its own copy; agents-md follows the same pattern). project_name drives
+# `uv init --name` and the src/<name>/ package; description fills pyproject.
+[[inputs]]
+key = "project_name"
+type = "string"
+prompt = "Project / package name (kebab or snake; the importable package uses the snake form)?"
+default = ""
+required = true
+
+[[inputs]]
+key = "description"
+type = "string"
+prompt = "One-line project description (written into pyproject)?"
+default = ""
+required = false
+
 [[inputs]]
 key = "python_version"
 type = "string"

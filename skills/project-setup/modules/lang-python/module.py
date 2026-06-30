@@ -301,6 +301,10 @@ def _do_write(sdk, inputs, args) -> int:
     pinned_deps: list[str] = inputs.get_list("pinned_deps", default=[])
     dev_deps: list[str] = inputs.get_list("dev_deps", default=[])
     ruff_version: str = inputs.get_str("ruff_version", default="")
+    # Project/package identity comes from the answer (mirrors agents-md, which
+    # declares its own project_name input). Fall back to the directory name only
+    # when unset, so existing behavior is preserved for answer-less runs.
+    description: str = inputs.get_str("description", default="")
 
     project_dir_env = os.environ.get("PROJECT_DIR")
     project_dir = Path(project_dir_env).resolve() if project_dir_env else Path.cwd().resolve()
@@ -362,21 +366,37 @@ def _do_write(sdk, inputs, args) -> int:
             sdk.emit_result(result)
             return 0
 
+    # Package identity: prefer the explicit project_name answer; only fall back
+    # to the directory name when it is absent. Normalize to a valid Python
+    # package identifier (PEP 8 / importable): lowercase, '-'→'_'.
+    raw_name = inputs.get_str("project_name", default="") or project_dir.name
+    project_name = raw_name.strip().lower().replace("-", "_")
+
     # ── 1. uv init ─────────────────────────────────────────────────────────── #
+    # --package: produces an installable package (adds [build-system] +
+    #   src/<name>/ layout + [project.scripts]) and NO stray root main.py.
+    # --name: names the project after the answer, not the directory.
+    # --no-readme: readme-draft owns README.md; don't let uv pre-create a stub
+    #   that the (reconcile=false) readme write step would then refuse to clobber.
     pyproject = project_dir / "pyproject.toml"
     if not pyproject.exists():
         if not args.inspect:
             sdk.run_tool(
-                ["uv", "init", "--python", python_version],
+                ["uv", "init", "--name", project_name, "--package",
+                 "--no-readme", "--python", python_version],
                 cwd=project_dir,
                 warnings=warnings,
                 label="uv init",
             )
         else:
-            warnings.append(f"inspect: would run uv init --python {python_version}")
+            warnings.append(
+                f"inspect: would run uv init --name {project_name} --package "
+                f"--no-readme --python {python_version}"
+            )
 
     # ── 2. src layout ──────────────────────────────────────────────────────── #
-    project_name = project_dir.name.replace("-", "_")
+    # uv init --package already created src/<name>/__init__.py; ensure it exists
+    # for the answer-less / pre-existing-pyproject path too.
     src_dir = project_dir / "src" / project_name
     init_rel = f"src/{project_name}/__init__.py"
     if not args.inspect:
@@ -392,6 +412,31 @@ def _do_write(sdk, inputs, args) -> int:
     diffs.append(diff)
     if diff.kind in ("create", "modify"):
         files_written.append(diff.path)
+
+    # ── 2b. Sync description into pyproject (replace uv's placeholder) ──────── #
+    # `uv init` writes `description = "Add your description here"`. If the agent
+    # supplied a real description, replace that placeholder in-place so the
+    # manifest reflects the project, not uv's default.
+    if description and not args.inspect and pyproject.exists():
+        try:
+            import re as _re
+            _content = pyproject.read_text(encoding="utf-8")
+            _esc = description.replace("\\", "\\\\").replace('"', '\\"')
+            _new, _n = _re.subn(
+                r'^(description\s*=\s*)".*"',
+                lambda m: f'{m.group(1)}"{_esc}"',
+                _content,
+                count=1,
+                flags=_re.MULTILINE,
+            )
+            if _n and _new != _content:
+                pyproject.write_text(_new, encoding="utf-8")
+                if "pyproject.toml" not in files_written:
+                    files_written.append("pyproject.toml")
+                diffs.append(sdk.Diff(path="pyproject.toml", kind="modify",
+                                      preview="(description synced)"))
+        except Exception as exc:  # noqa: BLE001
+            warnings.append(f"WARN: could not sync description into pyproject.toml: {exc}")
 
     # ── 3. Ruff config in pyproject.toml ───────────────────────────────────── #
     ruff_block = (_TEMPLATES / "ruff-config.toml").read_text(encoding="utf-8")
