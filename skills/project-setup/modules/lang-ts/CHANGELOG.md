@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0](https://github.com/srobroek/project-setup/compare/lang-ts-v1.1.0...lang-ts-v1.2.0) (2026-06-30)
+
+
+### Features
+
+* **lang-ts:** accept pre-resolved pinned_deps/dev_deps/package_manager_pin as optional inputs ([2a23cc2](https://github.com/srobroek/project-setup/commit/2a23cc20bb189c4c5a473d10dc5a02b87ec70f2b))
+
+
+### Bug Fixes
+
+* pre-resolved deps now materialize, inert gate flags warn, version drift guarded ([710115b](https://github.com/srobroek/project-setup/commit/710115b0c9c08cce0b906b9db039c241497040f1))
+* use release-please generic updater so module/apm versions actually sync ([c132244](https://github.com/srobroek/project-setup/commit/c132244f0704238bcee20909258336beb2bac9e1))
+* version metadata now syncs on release (generic updater) ([3507f61](https://github.com/srobroek/project-setup/commit/3507f61331d9bb7be9dc91a33ff9a89d8c1e3e6d))
+
 ## [1.1.0](https://github.com/srobroek/project-setup/compare/lang-ts-v1.0.0...lang-ts-v1.1.0) (2026-06-29)
 
 
