@@ -168,7 +168,7 @@ def _render_lines(obj, indent: int = 0) -> list[str]:
     return lines
 
 
-def render_ci_yaml(plan_dict: dict) -> str:
+def render_ci_yaml(plan_dict: dict, header_comments: list[str] | None = None) -> str:
     """Render a CI workflow dict to a canonical YAML string.
 
     Determinism guarantees (SC-006, FR-017):
@@ -182,105 +182,60 @@ def render_ci_yaml(plan_dict: dict) -> str:
             "on"      (dict) — trigger config
             "env"     (dict, optional) — workflow-level env vars
             "jobs"    (dict) — job id → job definition dict
+        header_comments: optional comment lines (e.g. FIXME notes for floating
+            action refs) emitted verbatim right after the `name:` line. Each must
+            already begin with '#'. Inserted structurally — no post-hoc string
+            surgery on the rendered output.
 
     Returns:
         A YAML string starting with "name: ..." with a trailing newline.
     """
-    lines: list[str] = []
+    # Render each top-level section through the single recursive emitter
+    # (_render_lines) rather than hand-unrolling indentation per nesting level.
+    # The recursive emitter handles arbitrary nesting (incl. step `with:` maps and
+    # strategy.matrix lists) uniformly, so there is one rendering code path and no
+    # per-level bugs. Determinism is preserved by normalizing key order BEFORE
+    # rendering and emitting blank-line separators between top-level sections.
+    blocks: list[list[str]] = []
 
-    # Top-level: name
+    # name: (+ optional header comment lines, e.g. FIXME notes for floating refs)
     name = plan_dict.get("name", "CI")
-    lines.append(f"name: {_scalar(name)}")
-    lines.append("")
+    name_block = [f"name: {_scalar(name)}"]
+    for c in (header_comments or []):
+        name_block.append(c if c.lstrip().startswith("#") else f"# {c}")
+    blocks.append(name_block)
 
-    # on: section — deterministic key order within triggers
+    # on: — triggers in sorted key order (deterministic). An empty/None trigger
+    # value renders as a bare `key:` (e.g. `workflow_dispatch:`).
     on_block = plan_dict.get("on", {})
-    lines.append("on:")
+    on_norm: dict = {}
     for trigger_key in sorted(on_block.keys()):
-        trigger_val = on_block[trigger_key]
-        if isinstance(trigger_val, dict):
-            lines.append(f"  {_scalar(trigger_key)}:")
-            for tk, tv in trigger_val.items():
-                if isinstance(tv, list):
-                    lines.append(f"    {_scalar(tk)}:")
-                    for item in tv:
-                        lines.append(f"      - {_scalar(item)}")
-                else:
-                    lines.append(f"    {_scalar(tk)}: {_scalar(tv)}")
-        elif trigger_val is None or trigger_val == {}:
-            lines.append(f"  {_scalar(trigger_key)}:")
-        else:
-            lines.append(f"  {_scalar(trigger_key)}: {_scalar(trigger_val)}")
-    lines.append("")
+        tv = on_block[trigger_key]
+        on_norm[trigger_key] = {} if (tv is None) else tv
+    blocks.append(["on:", *_render_lines(on_norm, indent=2)])
 
-    # env: section (optional)
+    # env: (optional)
     env_block = plan_dict.get("env")
     if env_block:
-        lines.append("env:")
-        for k, v in env_block.items():
-            lines.append(f"  {_scalar(k)}: {_scalar(v)}")
-        lines.append("")
+        blocks.append(["env:", *_render_lines(env_block, indent=2)])
 
-    # jobs: section
+    # jobs: — per-job key order normalized to name/runs-on/strategy/steps, then
+    # any extra keys sorted, so output is stable regardless of input dict order.
     jobs_block = plan_dict.get("jobs", {})
-    lines.append("jobs:")
+    job_key_order = ["name", "runs-on", "strategy", "steps"]
+    jobs_norm: dict = {}
     for job_id, job_def in jobs_block.items():
-        lines.append(f"  {_scalar(job_id)}:")
-        # Per-job key order: name, runs-on, strategy, steps
-        job_key_order = ["name", "runs-on", "strategy", "steps"]
-        other_keys = [k for k in job_def if k not in job_key_order]
-        ordered_job_keys = [k for k in job_key_order if k in job_def] + sorted(other_keys)
-        for jk in ordered_job_keys:
-            jv = job_def[jk]
-            jk_s = _scalar(jk)
-            if isinstance(jv, dict):
-                lines.append(f"    {jk_s}:")
-                for sk, sv in jv.items():
-                    sk_s = _scalar(sk)
-                    if isinstance(sv, dict):
-                        lines.append(f"      {sk_s}:")
-                        for ssk, ssv in sv.items():
-                            if isinstance(ssv, list):
-                                lines.append(f"        {_scalar(ssk)}:")
-                                for item in ssv:
-                                    lines.append(f"          - {_scalar(item)}")
-                            else:
-                                lines.append(f"        {_scalar(ssk)}: {_scalar(ssv)}")
-                    elif isinstance(sv, list):
-                        lines.append(f"      {sk_s}:")
-                        for item in sv:
-                            lines.append(f"        - {_scalar(item)}")
-                    else:
-                        lines.append(f"      {sk_s}: {_scalar(sv)}")
-            elif isinstance(jv, list):
-                lines.append(f"    {jk_s}:")
-                for step in jv:
-                    if isinstance(step, dict):
-                        first = True
-                        for sk, sv in step.items():
-                            sk_s2 = _scalar(sk)
-                            if isinstance(sv, dict):
-                                # e.g. `with: {python-version: '3.13'}` → render as
-                                # indented mapping, never as a stringified dict literal
-                                if first:
-                                    lines.append(f"      - {sk_s2}:")
-                                    first = False
-                                else:
-                                    lines.append(f"        {sk_s2}:")
-                                indent = "          "
-                                for wk, wv in sv.items():
-                                    lines.append(f"{indent}{_scalar(wk)}: {_scalar(wv)}")
-                            else:
-                                if first:
-                                    lines.append(f"      - {sk_s2}: {_scalar(sv)}")
-                                    first = False
-                                else:
-                                    lines.append(f"        {sk_s2}: {_scalar(sv)}")
-                    else:
-                        lines.append(f"      - {_scalar(step)}")
-            else:
-                lines.append(f"    {jk_s}: {_scalar(jv)}")
+        other_keys = sorted(k for k in job_def if k not in job_key_order)
+        ordered = [k for k in job_key_order if k in job_def] + other_keys
+        jobs_norm[job_id] = {k: job_def[k] for k in ordered}
+    blocks.append(["jobs:", *_render_lines(jobs_norm, indent=2)])
 
+    # Join sections with a single blank line between them.
+    lines: list[str] = []
+    for i, block in enumerate(blocks):
+        if i:
+            lines.append("")
+        lines.extend(block)
     return "\n".join(lines) + "\n"
 
 
@@ -716,13 +671,9 @@ def _do_write(sdk, inputs, args) -> int:
         "on": on_block,
         "jobs": jobs,
     }
-    yaml_content = render_ci_yaml(plan_dict)
-
-    # Inject FIXME placeholders for floating refs as comments near the top
-    if fixme_refs:
-        fixme_block = "\n".join(fixme_refs) + "\n"
-        # Insert after the first blank line (after the name: line)
-        yaml_content = yaml_content.replace("\non:", f"\n{fixme_block}\non:", 1)
+    # FIXME placeholders for floating refs are inserted structurally as header
+    # comments (right after `name:`), not via post-hoc string surgery on the output.
+    yaml_content = render_ci_yaml(plan_dict, header_comments=fixme_refs or None)
 
     # ── 12. Write idempotently (FR-011) ───────────────────────────────────── #
     diff = sdk.idempotent_write(
