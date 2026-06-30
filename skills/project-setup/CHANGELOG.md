@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/srobroek/project-setup/compare/project-setup-v0.4.1...project-setup-v0.5.0) (2026-06-30)
+
+
+### Features
+
+* add/install external modules (--add-module, --list-catalog) ([1f6a2b2](https://github.com/srobroek/project-setup/commit/1f6a2b21da64ee363d5b5cac7d94f50d5762b305))
+* **project-setup:** add/install external modules (--add-module, --list-catalog) ([b1a9d6b](https://github.com/srobroek/project-setup/commit/b1a9d6b39103518ede8747f1e82a22bf94d7cd78))
+
 ## [0.4.1](https://github.com/srobroek/project-setup/compare/project-setup-v0.4.0...project-setup-v0.4.1) (2026-06-30)
 
 
