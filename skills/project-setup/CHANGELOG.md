@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.3](https://github.com/srobroek/project-setup/compare/project-setup-v0.5.2...project-setup-v0.5.3) (2026-06-30)
+
+
+### Bug Fixes
+
+* ship bundled lang-go cmd/&lt;binary&gt; layout fix in a project-setup release ([7abdaa9](https://github.com/srobroek/project-setup/commit/7abdaa994f2f023887ddc00b933efefacd613fcd))
+* ship bundled lang-go go build fix in a project-setup release ([a4d2438](https://github.com/srobroek/project-setup/commit/a4d243876d12bb69c5b4990416a420991556c728))
+
 ## [0.5.2](https://github.com/srobroek/project-setup/compare/project-setup-v0.5.1...project-setup-v0.5.2) (2026-06-30)
 
 
