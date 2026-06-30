@@ -446,6 +446,164 @@ def fetch_addon_catalog(
 
 
 # --------------------------------------------------------------------------- #
+# seed_default_catalog_url — write first-party URL to home config (spec 021)  #
+# --------------------------------------------------------------------------- #
+
+# The first-party default catalog URL. This constant is used ONLY by the
+# setup/seed step — it is NOT referenced by addon_catalog_urls (which stays
+# hardcode-free, reading only env + config per spec 020 FR-B6). Mirroring how
+# spec-kit ships its default catalog: the default URL lives in the SETUP layer
+# and is REGISTERED into the user's config store; the runtime resolver never
+# has a hardcoded fallback, so an unconfigured install returns [] and no remote
+# fetch occurs.
+FIRST_PARTY_CATALOG_URL = (
+    "https://raw.githubusercontent.com/srobroek/project-setup/"
+    "main/skills/project-setup/addons/catalog.json"
+)
+
+
+def seed_default_catalog_url(
+    home: "str | Path | None" = None,
+    *,
+    url: str = FIRST_PARTY_CATALOG_URL,
+    force: bool = False,
+) -> bool:
+    """Seed the first-party addon catalog URL into the home config (spec 021).
+
+    WHY this exists (spec 018 hardcode-free contract):
+    ``addon_catalog_urls`` carries no hardcoded default URL — an unconfigured
+    install returns ``[]`` and no remote fetch occurs (FR-B6). The default URL
+    lives here, in the SETUP layer, and is registered into
+    ``~/.config/project-setup/config.toml`` exactly once during setup, mirroring
+    how spec-kit ships its default catalog URL. This keeps the runtime resolver
+    hardcode-free while still making a freshly installed setup "just work."
+
+    Parameters
+    ----------
+    home:
+        Override the home directory (test seam — same convention as
+        ``addon_catalog_urls``). When given, the config path is
+        ``<home>/.config/project-setup/config.toml``.
+    url:
+        The catalog URL to seed. Defaults to ``FIRST_PARTY_CATALOG_URL``.
+    force:
+        When ``True``, overwrite an existing ``[catalog].urls`` list.
+        When ``False`` (default), do nothing (idempotent) if a non-empty
+        ``[catalog].urls`` or top-level ``catalog_urls`` already exists.
+
+    Returns
+    -------
+    bool
+        ``True`` if the config was written/updated; ``False`` if it was skipped
+        (already configured) or if any error occurred (never raises).
+    """
+    try:
+        if home is not None:
+            cfg_path = Path(home) / ".config" / "project-setup" / "config.toml"
+        else:
+            import paths as _paths_local
+            cfg_path = _paths_local.home_config_path()
+
+        # Read existing config (if any), tolerating missing/malformed files.
+        existing_data: dict = {}
+        if cfg_path.is_file():
+            try:
+                with open(cfg_path, "rb") as fh:
+                    existing_data = tomllib.load(fh)
+            except Exception:  # noqa: BLE001 — malformed TOML or IO error
+                return False
+
+        # Check whether catalog URLs are already configured (and force is off).
+        if not force:
+            catalog_section = existing_data.get("catalog", {})
+            existing_urls: list = []
+            if isinstance(catalog_section, dict):
+                urls_val = catalog_section.get("urls")
+                if isinstance(urls_val, list):
+                    existing_urls = [u for u in urls_val if isinstance(u, str) and u.strip()]
+            if not existing_urls:
+                # Also check top-level catalog_urls fallback.
+                top_level = existing_data.get("catalog_urls")
+                if isinstance(top_level, list):
+                    existing_urls = [u for u in top_level if isinstance(u, str) and u.strip()]
+            if existing_urls:
+                return False  # already configured — idempotent, do nothing
+
+        # Build the updated config: preserve all existing keys, set [catalog].urls.
+        new_data: dict = {}
+        # Copy top-level scalars/lists (non-dict), excluding catalog_urls (we
+        # normalise to [catalog].urls).
+        for k, v in existing_data.items():
+            if k not in ("catalog", "catalog_urls"):
+                new_data[k] = v
+        # Set [catalog] table, preserving any non-url keys in an existing section.
+        catalog_section = existing_data.get("catalog", {})
+        new_catalog: dict = {}
+        if isinstance(catalog_section, dict):
+            for k, v in catalog_section.items():
+                if k != "urls":
+                    new_catalog[k] = v
+        new_catalog["urls"] = [url]
+        new_data["catalog"] = new_catalog
+
+        # Write the config using a minimal TOML serialiser (stdlib only).
+        cfg_path.parent.mkdir(parents=True, exist_ok=True)
+        lines: list[str] = []
+        # Top-level scalar/list keys first (preserve existing non-catalog keys).
+        top_scalars = {k: v for k, v in new_data.items() if k != "catalog" and not isinstance(v, dict)}
+        for k, v in top_scalars.items():
+            bare = k if re.fullmatch(r"[A-Za-z0-9_-]+", k) else f'"{k}"'
+            lines.append(f"{bare} = {_toml_scalar_simple(v)}")
+        if top_scalars:
+            lines.append("")
+        # [catalog] table.
+        lines.append("[catalog]")
+        for k, v in new_catalog.items():
+            bare = k if re.fullmatch(r"[A-Za-z0-9_-]+", k) else f'"{k}"'
+            lines.append(f"{bare} = {_toml_scalar_simple(v)}")
+        lines.append("")
+        cfg_path.write_text("\n".join(lines), encoding="utf-8")
+        return True
+
+    except Exception:  # noqa: BLE001 — never raises
+        return False
+
+
+def _toml_scalar_simple(v: object) -> str:
+    """Minimal TOML value serialiser for seed_default_catalog_url.
+
+    Handles: bool, int, str, and list-of-str. Sufficient for config.toml values.
+    """
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, int):
+        return str(v)
+    if isinstance(v, str):
+        # Basic string with required TOML escapes.
+        out = ['"']
+        for ch in v:
+            if ch == "\\":
+                out.append("\\\\")
+            elif ch == '"':
+                out.append('\\"')
+            elif ch == "\n":
+                out.append("\\n")
+            elif ch == "\r":
+                out.append("\\r")
+            elif ch == "\t":
+                out.append("\\t")
+            elif ord(ch) < 0x20:
+                out.append(f"\\u{ord(ch):04X}")
+            else:
+                out.append(ch)
+        out.append('"')
+        return "".join(out)
+    if isinstance(v, list):
+        return "[" + ", ".join(_toml_scalar_simple(item) for item in v) + "]"
+    return repr(v)  # fallback — should not be reached for config.toml values
+
+
+# --------------------------------------------------------------------------- #
 # addon_catalog_urls — resolve catalog URLs from config/env (spec 020 FR-B2)  #
 # --------------------------------------------------------------------------- #
 def addon_catalog_urls(home: "str | Path | None" = None) -> "list[str]":

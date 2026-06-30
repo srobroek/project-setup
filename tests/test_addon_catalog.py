@@ -349,6 +349,138 @@ class TestAddonCatalogUrls:
 # Hardcoded-URL guard (SC-X, FR-X1)                                           #
 # --------------------------------------------------------------------------- #
 
+# --------------------------------------------------------------------------- #
+# seed_default_catalog_url                                                     #
+# --------------------------------------------------------------------------- #
+
+class TestSeedDefaultCatalogUrl:
+    """Unit tests for sdk.seed_default_catalog_url."""
+
+    def test_seeds_into_empty_home(self, tmp_path, monkeypatch):
+        """First call into an empty home: file is created, returns True."""
+        monkeypatch.delenv("PROJECT_SETUP_CATALOG_URL", raising=False)
+        result = sdk.seed_default_catalog_url(home=tmp_path)
+        assert result is True
+        cfg = tmp_path / ".config" / "project-setup" / "config.toml"
+        assert cfg.is_file(), "config.toml should have been created"
+
+    def test_seeded_url_is_returned_by_addon_catalog_urls(self, tmp_path, monkeypatch):
+        """After seeding, addon_catalog_urls(home=...) returns the seeded URL."""
+        monkeypatch.delenv("PROJECT_SETUP_CATALOG_URL", raising=False)
+        sdk.seed_default_catalog_url(home=tmp_path)
+        urls = addon_catalog_urls(home=tmp_path)
+        assert sdk.FIRST_PARTY_CATALOG_URL in urls
+
+    def test_idempotent_second_call_returns_false(self, tmp_path, monkeypatch):
+        """Second call with the same home returns False (already configured)."""
+        monkeypatch.delenv("PROJECT_SETUP_CATALOG_URL", raising=False)
+        first = sdk.seed_default_catalog_url(home=tmp_path)
+        second = sdk.seed_default_catalog_url(home=tmp_path)
+        assert first is True
+        assert second is False
+
+    def test_idempotent_file_unchanged_on_second_call(self, tmp_path, monkeypatch):
+        """File content is not altered on the second (no-op) call."""
+        monkeypatch.delenv("PROJECT_SETUP_CATALOG_URL", raising=False)
+        sdk.seed_default_catalog_url(home=tmp_path)
+        cfg = tmp_path / ".config" / "project-setup" / "config.toml"
+        content_after_first = cfg.read_text(encoding="utf-8")
+        sdk.seed_default_catalog_url(home=tmp_path)
+        content_after_second = cfg.read_text(encoding="utf-8")
+        assert content_after_first == content_after_second
+
+    def test_does_not_clobber_existing_catalog_urls(self, tmp_path, monkeypatch):
+        """When a non-empty [catalog].urls already exists, returns False and preserves it."""
+        monkeypatch.delenv("PROJECT_SETUP_CATALOG_URL", raising=False)
+        cfg_dir = tmp_path / ".config" / "project-setup"
+        cfg_dir.mkdir(parents=True)
+        user_url = "https://my-org.example.com/catalog.json"
+        (cfg_dir / "config.toml").write_text(
+            f'[catalog]\nurls = ["{user_url}"]\n',
+            encoding="utf-8",
+        )
+        result = sdk.seed_default_catalog_url(home=tmp_path)
+        assert result is False
+        # User's URL must still be in place.
+        urls = addon_catalog_urls(home=tmp_path)
+        assert user_url in urls
+        assert sdk.FIRST_PARTY_CATALOG_URL not in urls
+
+    def test_does_not_clobber_top_level_catalog_urls(self, tmp_path, monkeypatch):
+        """When a non-empty top-level catalog_urls exists, returns False and preserves it."""
+        monkeypatch.delenv("PROJECT_SETUP_CATALOG_URL", raising=False)
+        cfg_dir = tmp_path / ".config" / "project-setup"
+        cfg_dir.mkdir(parents=True)
+        user_url = "https://top-level.example.com/catalog.json"
+        (cfg_dir / "config.toml").write_text(
+            f'catalog_urls = ["{user_url}"]\n',
+            encoding="utf-8",
+        )
+        result = sdk.seed_default_catalog_url(home=tmp_path)
+        assert result is False
+        urls = addon_catalog_urls(home=tmp_path)
+        assert user_url in urls
+
+    def test_force_overwrites_existing_config(self, tmp_path, monkeypatch):
+        """force=True replaces the [catalog].urls even when it is already set."""
+        monkeypatch.delenv("PROJECT_SETUP_CATALOG_URL", raising=False)
+        cfg_dir = tmp_path / ".config" / "project-setup"
+        cfg_dir.mkdir(parents=True)
+        user_url = "https://my-org.example.com/catalog.json"
+        (cfg_dir / "config.toml").write_text(
+            f'[catalog]\nurls = ["{user_url}"]\n',
+            encoding="utf-8",
+        )
+        result = sdk.seed_default_catalog_url(home=tmp_path, force=True)
+        assert result is True
+        urls = addon_catalog_urls(home=tmp_path)
+        assert sdk.FIRST_PARTY_CATALOG_URL in urls
+
+    def test_never_raises_on_malformed_toml(self, tmp_path, monkeypatch):
+        """Malformed TOML in the existing config must not raise — returns False."""
+        monkeypatch.delenv("PROJECT_SETUP_CATALOG_URL", raising=False)
+        cfg_dir = tmp_path / ".config" / "project-setup"
+        cfg_dir.mkdir(parents=True)
+        (cfg_dir / "config.toml").write_text("not valid toml [[[\n", encoding="utf-8")
+        result = sdk.seed_default_catalog_url(home=tmp_path)
+        assert result is False  # no exception, graceful skip
+
+    def test_never_raises_on_read_only_parent(self, tmp_path, monkeypatch):
+        """An unwritable parent directory must not raise — returns False."""
+        import os
+        monkeypatch.delenv("PROJECT_SETUP_CATALOG_URL", raising=False)
+        cfg_dir = tmp_path / ".config" / "project-setup"
+        cfg_dir.mkdir(parents=True)
+        # Make the directory read-only so the write will fail.
+        cfg_dir.chmod(0o555)
+        try:
+            result = sdk.seed_default_catalog_url(home=tmp_path)
+            assert result is False
+        finally:
+            cfg_dir.chmod(0o755)  # restore so tmp_path cleanup works
+
+    def test_first_party_catalog_url_constant_is_raw_githubusercontent(self):
+        """FIRST_PARTY_CATALOG_URL must be a raw.githubusercontent.com URL."""
+        url = sdk.FIRST_PARTY_CATALOG_URL
+        assert url.startswith("https://raw.githubusercontent.com/"), (
+            f"FIRST_PARTY_CATALOG_URL should be a raw.githubusercontent.com URL; got {url!r}"
+        )
+
+    def test_first_party_catalog_url_ends_with_addons_catalog_json(self):
+        """FIRST_PARTY_CATALOG_URL must end with /addons/catalog.json."""
+        url = sdk.FIRST_PARTY_CATALOG_URL
+        assert url.endswith("/addons/catalog.json"), (
+            f"FIRST_PARTY_CATALOG_URL should end with '/addons/catalog.json'; got {url!r}"
+        )
+
+    def test_addon_catalog_urls_still_returns_empty_when_unconfigured(self, tmp_path, monkeypatch):
+        """addon_catalog_urls is unchanged: returns [] when nothing is configured."""
+        monkeypatch.delenv("PROJECT_SETUP_CATALOG_URL", raising=False)
+        # Do NOT call seed_default_catalog_url — just verify addon_catalog_urls returns [].
+        result = addon_catalog_urls(home=tmp_path)
+        assert result == []
+
+
 class TestNoHardcodedUrls:
     """Assert that no org-specific / srobroek URL is hardcoded in the new code."""
 

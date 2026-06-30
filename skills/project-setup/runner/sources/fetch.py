@@ -97,7 +97,7 @@ def _clone_or_update(locator: "Locator", cache_dir: Path) -> FetchResult:
         # tree on the initial clone — then checkout later.
         ok, msg = _run_git(
             "clone", "--no-local", "--filter=blob:none",
-            locator.origin, str(repo_dir),
+            _locator_mod.clone_url(locator.origin), str(repo_dir),
         )
         if not ok:
             return FetchResult(ok=False, root_path=None, locator=locator,

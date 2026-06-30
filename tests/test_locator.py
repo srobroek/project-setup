@@ -257,3 +257,61 @@ class TestParseErrors:
         import pytest
         with pytest.raises(ValueError):
             parse_locator("   ")
+
+
+# ---------------------------------------------------------------------------
+# clone_url: restore https:// scheme stripped by normalize_origin
+# ---------------------------------------------------------------------------
+
+class TestCloneUrl:
+    """clone_url must return a git-clone-able URL from any origin form.
+
+    normalize_origin strips the scheme to produce a stable cache-key seed
+    (``github.com/owner/repo``).  clone_url restores the scheme so that
+    ``git clone`` can actually reach the remote.
+    """
+
+    def test_normalized_origin_gets_https_prefix(self):
+        """The common case: a normalized scheme-less origin becomes https://."""
+        clone_url = locator_mod.clone_url
+        assert clone_url("github.com/srobroek/project-setup") == \
+            "https://github.com/srobroek/project-setup"
+
+    def test_already_https_is_unchanged(self):
+        clone_url = locator_mod.clone_url
+        url = "https://github.com/owner/repo"
+        assert clone_url(url) == url
+
+    def test_already_http_is_unchanged(self):
+        clone_url = locator_mod.clone_url
+        url = "http://internal.example.com/owner/repo"
+        assert clone_url(url) == url
+
+    def test_ssh_url_is_unchanged(self):
+        clone_url = locator_mod.clone_url
+        url = "git@github.com:owner/repo"
+        assert clone_url(url) == url
+
+    def test_ssh_scheme_url_is_unchanged(self):
+        clone_url = locator_mod.clone_url
+        url = "ssh://git@github.com/owner/repo"
+        assert clone_url(url) == url
+
+    def test_file_scheme_url_is_unchanged(self):
+        clone_url = locator_mod.clone_url
+        url = "file:///tmp/local-repo.git"
+        assert clone_url(url) == url
+
+    def test_absolute_local_path_is_unchanged(self):
+        clone_url = locator_mod.clone_url
+        path = "/tmp/project-setup-fix"
+        assert clone_url(path) == path
+
+    def test_shorthand_normalized_origin_depth(self):
+        """A locator parsed from shorthand has a normalized origin; clone_url fixes it."""
+        clone_url = locator_mod.clone_url
+        loc = parse_locator("srobroek/project-setup")
+        # normalize_origin produces "github.com/srobroek/project-setup"
+        assert loc.origin == "github.com/srobroek/project-setup"
+        # clone_url must prepend https://
+        assert clone_url(loc.origin) == "https://github.com/srobroek/project-setup"

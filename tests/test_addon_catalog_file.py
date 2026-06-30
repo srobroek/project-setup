@@ -164,6 +164,28 @@ class TestCatalogFileStructure:
                 f"Expected one of {valid_categories}"
             )
 
+    def test_each_record_ref_is_pinned_to_release_tag(self, catalog):
+        """Every module ref must be a per-module release tag (single-dash form).
+
+        'main' is NOT acceptable — catalog entries must be pinned to an
+        immutable tag so fetches are reproducible (thin-core stage 1).
+        Expected form: <name>-v<major>.<minor>.<patch>  (single dash before 'v')
+        Double-dash form (e.g. lang-python--v1.2.1) is the monorepo tag
+        convention and must be REJECTED here — the standalone srobroek/project-setup
+        repo uses single-dash tags.
+        """
+        import re
+        for record in catalog["modules"]:
+            name = record.get("name", "")
+            ref = record.get("ref", "")
+            # Single-dash: <name>-v<semver>  — exactly one dash before 'v'
+            pattern = re.compile(rf"^{re.escape(name)}-v\d+\.\d+\.\d+$")
+            assert pattern.match(ref), (
+                f"Module {name!r} ref {ref!r} is not a pinned release tag. "
+                f"Expected pattern: {name}-v<major>.<minor>.<patch> "
+                f"(single-dash form; double-dash is the monorepo convention and is rejected)"
+            )
+
     def test_language_modules_have_language_category(self, catalog):
         lang_modules = {"lang-python", "lang-ts", "lang-go", "lang-rust"}
         by_name = {m["name"]: m for m in catalog["modules"]}

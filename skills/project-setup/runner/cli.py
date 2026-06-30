@@ -806,6 +806,13 @@ def _cmd_list_catalog(home: Path | None = None) -> int:
     """
     import sdk as _sdk_mod
 
+    # First-run seed: if the user has no catalog configured, write the
+    # first-party default into the home config (idempotent; never clobbers an
+    # existing [catalog].urls). Mirrors spec-kit, which registers its community
+    # catalog into the tool's config store on setup. addon_catalog_urls itself
+    # stays hardcode-free; the default lives in the seed layer.
+    _sdk_mod.seed_default_catalog_url(home=home)
+
     urls = _sdk_mod.addon_catalog_urls(home=home)
     if not urls:
         print(
@@ -888,6 +895,10 @@ def _cmd_add_module_from_catalog(
     Returns 0 on success, 1 on error.
     """
     import sdk as _sdk_mod
+
+    # First-run seed (see _cmd_list_catalog): ensure the first-party default
+    # catalog is configured so a fresh install can resolve addons by name.
+    _sdk_mod.seed_default_catalog_url(home=home)
 
     urls = _sdk_mod.addon_catalog_urls(home=home)
     if not urls:
