@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/srobroek/project-setup/compare/justfile-write-v1.0.2...justfile-write-v1.1.0) (2026-06-30)
+
+
+### Features
+
+* **justfile-write:** language-aware recipes instead of error stubs ([4572760](https://github.com/srobroek/project-setup/commit/457276098776b8d6d191ab03de902ca72fadde63))
+
+
+### Bug Fixes
+
+* fill AGENTS.md, language-aware justfile, optional initial git commit ([b884adc](https://github.com/srobroek/project-setup/commit/b884adcdd473f882d04fa27ee161f3c839bb638f))
+
 ## [1.0.2](https://github.com/srobroek/project-setup/compare/justfile-write-v1.0.1...justfile-write-v1.0.2) (2026-06-30)
 
 
