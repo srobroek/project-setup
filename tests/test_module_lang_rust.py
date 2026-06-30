@@ -359,3 +359,95 @@ def test_inspect_writes_nothing(tmp_path):
     assert not (project / "rustfmt.toml").exists()
     assert not (project / "clippy.toml").exists()
     assert not (project / "rust-toolchain.toml").exists()
+
+
+# ── BUG A+B: project_name answer ─────────────────────────────────────────────
+
+def _frozen_plan_with_name(tmp: Path, project_name: str, workspace: bool = False) -> Path:
+    """Build a frozen plan that includes a project_name answer."""
+    plan = {
+        "schema_version": 1,
+        "mode": "init",
+        "order": ["lang-rust"],
+        "modules": {
+            "lang-rust": {
+                "id": "lang-rust",
+                "version": "1.0.0",
+                "reconcile": True,
+                "module_rel_root": _MODULE_REL,
+                "answers": {
+                    "project_name": project_name,
+                    "workspace": workspace,
+                    "crate_kind": "",
+                },
+                "steps": [
+                    {"id": "write", "kind": "python"},
+                    {"id": "run-generator", "kind": "gate", "hardness": "soft", "skip_flag": "no-external-generators"},
+                    {"id": "scaffold", "kind": "python"},
+                ],
+            }
+        },
+    }
+    p = tmp / "plan.json"
+    p.write_text(json.dumps(plan))
+    return p
+
+
+def _stub_cargo_capture(tmp: Path) -> tuple[Path, Path]:
+    """Write a cargo stub that records its argv to a file, then exits 0."""
+    stub_dir = tmp / "stubs"
+    stub_dir.mkdir(exist_ok=True)
+    args_file = tmp / "cargo_args.txt"
+    stub = stub_dir / "cargo"
+    stub.write_text(f'#!/bin/sh\necho "$@" >> {args_file}\nexit 0\n')
+    stub.chmod(0o755)
+    return stub_dir, args_file
+
+
+def test_project_name_passed_to_cargo_init(tmp_path):
+    """BUG A+B: project_name answer is passed as --name to cargo init."""
+    project = tmp_path / "some-directory"
+    project.mkdir()
+    stub_dir, args_file = _stub_cargo_capture(tmp_path)
+    (project / ".gitignore").write_text("# base\n")
+    plan = _frozen_plan_with_name(tmp_path, project_name="my-crate")
+
+    proc = _run(project, plan, stub_dir, step="scaffold")
+    assert proc.returncode == 0, proc.stderr
+
+    assert args_file.exists(), "cargo stub was never invoked"
+    cargo_args = args_file.read_text()
+    assert "--name" in cargo_args, f"--name not passed to cargo init; args: {cargo_args!r}"
+    assert "my-crate" in cargo_args, f"crate name missing from cargo args: {cargo_args!r}"
+
+
+def test_project_name_not_dir_name_without_answer(tmp_path):
+    """Without project_name answer, cargo init still runs (backwards-compat fallback)."""
+    project = tmp_path / "fallback-dir"
+    project.mkdir()
+    stub_dir, args_file = _stub_cargo_capture(tmp_path)
+    (project / ".gitignore").write_text("# base\n")
+    # Use base _frozen_plan which has no project_name key
+    plan = _frozen_plan(tmp_path, workspace=False)
+
+    proc = _run(project, plan, stub_dir, step="scaffold")
+    assert proc.returncode == 0, proc.stderr
+    # The stub was called; fallback used dir name "fallback-dir"
+    assert args_file.exists(), "cargo stub was never invoked"
+    cargo_args = args_file.read_text()
+    assert "--name" in cargo_args, f"--name not passed; args: {cargo_args!r}"
+    assert "fallback-dir" in cargo_args, (
+        f"Expected dir name as fallback crate name; args: {cargo_args!r}"
+    )
+
+
+def test_manifest_has_project_name_input():
+    """manifest must declare a project_name input (required=true)."""
+    manifest = _load("manifest")
+    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    input_keys = {inp.key for inp in mani.inputs}
+    assert "project_name" in input_keys, (
+        f"project_name input missing from lang-rust module.toml; keys: {input_keys}"
+    )
+    pn_input = next(inp for inp in mani.inputs if inp.key == "project_name")
+    assert pn_input.required is True, "project_name input must be required=true"

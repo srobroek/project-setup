@@ -15,6 +15,16 @@ reconcile = true
 [order]
 after = ["gitignore-generate", "precommit-setup"]
 
+# Identity input — the agent supplies the SAME project name it gave core-identity.
+# project_name is passed to `cargo init --name` so the crate name matches the
+# answer rather than the directory name (which may be a temp or differently-cased path).
+[[inputs]]
+key = "project_name"
+type = "string"
+prompt = "Project / crate name (passed to cargo init --name)?"
+default = ""
+required = true
+
 [[inputs]]
 key = "crate_kind"
 type = "string"
