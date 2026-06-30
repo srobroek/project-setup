@@ -2,7 +2,7 @@
   "skills/project-setup": "0.3.3",
   "skills/project-setup/modules/agents-md": "1.0.2",
   "skills/project-setup/modules/apm-install": "1.0.1",
-  "skills/project-setup/modules/ci-github-actions": "1.1.2",
+  "skills/project-setup/modules/ci-github-actions": "1.1.1",
   "skills/project-setup/modules/codex-config": "1.0.1",
   "skills/project-setup/modules/core-identity": "1.1.1",
   "skills/project-setup/modules/dirs-scaffold": "1.0.1",
@@ -18,10 +18,10 @@
   "skills/project-setup/modules/license-write": "2.0.1",
   "skills/project-setup/modules/mcp-config": "1.1.1",
   "skills/project-setup/modules/org-policy": "1.0.1",
-  "skills/project-setup/modules/package-add": "1.1.2",
+  "skills/project-setup/modules/package-add": "1.1.1",
   "skills/project-setup/modules/precommit-setup": "1.0.1",
   "skills/project-setup/modules/quality-hooks": "1.1.1",
-  "skills/project-setup/modules/readme-draft": "1.0.2",
+  "skills/project-setup/modules/readme-draft": "1.0.1",
   "skills/project-setup/modules/speckit-bridge": "1.0.1",
   "skills/project-setup/modules/stack-adr": "1.1.1"
 }
