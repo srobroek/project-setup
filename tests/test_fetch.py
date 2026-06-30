@@ -111,6 +111,24 @@ class TestFetchSourceLocal:
         result = fetch_source(loc)
         assert isinstance(result, FetchResult)
 
+    def test_local_subdir_resolved(self, tmp_path):
+        """A local locator with a subdir returns root_path = <path>/<subdir>
+        (mirrors the git path), so a local source whose modules live under a
+        subdir points at the module root, not the repo root."""
+        (tmp_path / "modules").mkdir()
+        loc = locator_mod.Locator(kind="local", origin=str(tmp_path), subdir="modules", ref="")
+        result = fetch_source(loc)
+        assert result.ok is True
+        assert result.root_path == tmp_path / "modules"
+
+    def test_local_subdir_missing_is_not_ok(self, tmp_path):
+        """A local locator pointing at a non-existent subdir fails gracefully."""
+        loc = locator_mod.Locator(kind="local", origin=str(tmp_path), subdir="nope", ref="")
+        result = fetch_source(loc)
+        assert result.ok is False
+        assert result.root_path is None
+        assert "subdir" in result.skipped_reason
+
 
 # ---------------------------------------------------------------------------
 # Git locator tests: git binary absent → graceful skip
