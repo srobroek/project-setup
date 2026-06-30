@@ -50,6 +50,17 @@ hand the runner a frozen answer set — the runner never prompts.
    ```
    Then `uv run <root>/runner/cli.py --project-dir <dir> --answers answers.json [gate flags]`.
    The runner validates, builds the plan, executes, and writes `.project-setup/`.
+3. **MANDATORY preflight — run `--check-answers` first.** Before the real run,
+   invoke the SAME command with `--check-answers` added:
+   `uv run <root>/runner/cli.py --project-dir <dir> --answers answers.json --check-answers`.
+   It discovers + resolves the enabled module set and reports EVERY missing required
+   input (and missing tool / order error) at once, then exits WITHOUT scaffolding.
+   If it exits non-zero, it lists each gap as `Provide a value for '<key>' in module
+   '<id>'` — go back to the user, ask those specific questions, add them to the answers
+   file, and re-check. Only run the real (non-`--check-answers`) command once the
+   preflight reports `answers complete`. This makes the interview deterministic: the
+   runner — not your judgment — decides whether every required question was answered, so
+   no required input can be silently defaulted or skipped.
 
 Gates are driven by consent flags (NOT by prompts): with `--answers` the run is
 non-interactive, so a hard gate SAFE-skips unless its flag is active.

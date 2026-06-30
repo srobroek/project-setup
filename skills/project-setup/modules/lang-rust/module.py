@@ -218,6 +218,11 @@ def _do_scaffold(sdk, inputs, args) -> int:
     diffs = []
     files_written: list[str] = []
 
+    # Crate identity: prefer the explicit project_name answer; fall back to the
+    # directory name when absent (preserves existing behaviour for answer-less runs).
+    raw_name = inputs.get_str("project_name", default="") or project_dir.name
+    crate_name = raw_name.strip()
+
     if workspace:
         # workspace=true: no generator needed, Cargo.toml was written in the write step
         result = sdk.ModuleResult(
@@ -232,17 +237,19 @@ def _do_scaffold(sdk, inputs, args) -> int:
         return 0
 
     # workspace=false: run cargo init (may create Cargo.toml + src/main.rs)
+    # --name overrides the default (which is the directory name) so the crate name
+    # matches the answer-driven project_name rather than whatever the dir happens to be.
     cargo_toml = project_dir / "Cargo.toml"
     if not cargo_toml.exists():
         if not args.inspect:
             sdk.run_tool(
-                ["cargo", "init", "."],
+                ["cargo", "init", ".", "--name", crate_name],
                 cwd=project_dir,
                 warnings=warnings,
                 label="cargo init",
             )
         else:
-            warnings.append("inspect: would run cargo init .")
+            warnings.append(f"inspect: would run cargo init . --name {crate_name}")
     else:
         diffs.append(sdk.Diff(path="Cargo.toml", kind="skip", preview="(Cargo.toml already exists)"))
 

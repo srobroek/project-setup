@@ -461,6 +461,7 @@ def run_pipeline(
     skill_version: str = "",
     non_interactive: bool = False,
     dry_run: bool = False,
+    check_only: bool = False,
     plugin_root_path: Path | None = None,
     plan_path: Path | None = None,
     env: dict[str, str] | None = None,
@@ -736,6 +737,20 @@ def run_pipeline(
         result.success = False
         for err in gf.errors:
             io.notify(f"[GATE ERROR] {err.how_to_fix}")
+        return result
+
+    # ── --check-answers preflight: stop here on success ──────────────────────── #
+    # Reports EVERY missing required input / missing tool / order error at once
+    # (validate_closed above raised them all on failure). Reaching here means the
+    # answers are complete for the enabled module set — exit without freezing or
+    # executing anything. This lets an agent verify its --answers file is complete
+    # BEFORE the real run, so the interview can't silently skip required questions.
+    if check_only:
+        result.success = True
+        io.notify(
+            f"[CHECK] answers complete: all required inputs present for "
+            f"{len(ordered_ids)} enabled module(s)."
+        )
         return result
 
     # ── Stage 5b: Phase A — agent research/decision pass (two-phase plan) ────── #

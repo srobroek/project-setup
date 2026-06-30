@@ -384,3 +384,59 @@ def test_emit_result_output_is_canonical_json(capsys):
     assert "files_written" in data
 
 
+
+
+# ── BUG D: idempotent_write empty-file clobber fix ────────────────────────────
+
+def test_idempotent_write_empty_file_is_overwritten(tmp_path):
+    """BUG D: reconcile=False must overwrite an existing empty file (not silently skip it)."""
+    target = tmp_path / "myfile.txt"
+    target.write_bytes(b"")  # empty file — should be treated as absent
+
+    diff = idempotent_write("myfile.txt", "real content\n", project_dir=tmp_path, reconcile=False)
+
+    assert diff.kind == "create", (
+        f"Expected kind='create' for empty-file overwrite, got {diff.kind!r}"
+    )
+    assert target.read_text() == "real content\n", "Empty file was not overwritten"
+
+
+def test_idempotent_write_whitespace_only_file_is_overwritten(tmp_path):
+    """BUG D: a whitespace-only file (e.g. '\\n   \\n') must also be overwritten."""
+    target = tmp_path / "myfile.txt"
+    target.write_bytes(b"\n   \n")  # whitespace-only
+
+    diff = idempotent_write("myfile.txt", "real content\n", project_dir=tmp_path, reconcile=False)
+
+    assert diff.kind == "create", (
+        f"Expected kind='create' for whitespace-only file, got {diff.kind!r}"
+    )
+    assert target.read_text() == "real content\n", "Whitespace-only file was not overwritten"
+
+
+def test_idempotent_write_non_empty_existing_file_is_preserved(tmp_path):
+    """BUG D safety: a non-empty existing file must still be preserved (no clobber)."""
+    target = tmp_path / "myfile.txt"
+    target.write_text("user content\n")
+
+    diff = idempotent_write("myfile.txt", "new content\n", project_dir=tmp_path, reconcile=False)
+
+    assert diff.kind == "skip", (
+        f"Expected kind='skip' for non-empty existing file, got {diff.kind!r}"
+    )
+    assert target.read_text() == "user content\n", "Non-empty existing file was clobbered!"
+
+
+def test_idempotent_write_empty_file_inspect_returns_create(tmp_path):
+    """BUG D: inspect=True on an empty file must also report kind='create' (preview only)."""
+    target = tmp_path / "myfile.txt"
+    target.write_bytes(b"")
+
+    diff = idempotent_write("myfile.txt", "real content\n", project_dir=tmp_path,
+                            reconcile=False, inspect=True)
+
+    assert diff.kind == "create", (
+        f"inspect: expected kind='create' for empty file, got {diff.kind!r}"
+    )
+    # inspect=True must NOT write
+    assert target.read_bytes() == b"", "inspect=True must not write to disk"

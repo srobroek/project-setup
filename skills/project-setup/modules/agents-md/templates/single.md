@@ -32,7 +32,7 @@
 | `docs/` | Documentation, ADRs |
 | `specs/` | Feature specifications (speckit) |
 | `research/` | Technology decisions, alternatives analysis |
-| `infra/` | Infrastructure config |
+| `infrastructure/` | Infrastructure config (Terraform modules, stacks, environments) |
 | `tests/` | Integration and E2E tests |
 | `scripts/` | Build tooling, automation |
 | `assets/` | Static files |

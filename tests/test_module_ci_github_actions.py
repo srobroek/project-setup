@@ -626,3 +626,111 @@ def test_use_just_false_drops_just_commands(tmp_path):
     assert "just test" not in valid
     assert "uv run pytest" in valid
     assert any("use_just=false" in w for w in warnings)
+
+
+# ── Adversarial fix 1: with: dict must render as YAML mapping, not string ────
+
+def test_render_ci_yaml_with_block_is_yaml_mapping():
+    """Fix 1: a step's `with:` dict must render as a proper YAML mapping, not a stringified dict.
+
+    Validated WITHOUT pyyaml — the runner core is stdlib-only and CI has no pyyaml.
+    We assert the rendered TEXT has an indented `with:` header followed by a
+    `python-version: '3.13'` mapping line, and contains no `str(dict)` artifact.
+    """
+    ci_mod = _load_module_py()
+    plan_dict = {
+        "name": "CI",
+        "on": {"push": {"branches": ["main"]}},
+        "jobs": {
+            "python-test": {
+                "name": "Python Test",
+                "runs-on": "ubuntu-latest",
+                "steps": [
+                    {"uses": "actions/checkout@v4"},
+                    {
+                        "uses": "astral-sh/setup-uv@v5",
+                        "with": {"python-version": "3.13"},
+                    },
+                    {"name": "Run: just test", "run": "just test"},
+                ],
+            }
+        },
+    }
+
+    yaml_text = ci_mod.render_ci_yaml(plan_dict)
+
+    # The str(dict) regression artifact must be absent.
+    assert "{'python-version'" not in yaml_text, (
+        f"Stringified dict found in YAML output:\n{yaml_text}"
+    )
+    # `with:` must appear as a block header (its own line, nothing after the colon),
+    # immediately followed by an indented `python-version:` mapping entry.
+    lines = yaml_text.splitlines()
+    with_idx = next(
+        (i for i, ln in enumerate(lines) if ln.strip() == "with:"), None
+    )
+    assert with_idx is not None, (
+        f"expected a `with:` block header line; got:\n{yaml_text}"
+    )
+    with_indent = len(lines[with_idx]) - len(lines[with_idx].lstrip())
+    child = lines[with_idx + 1]
+    child_indent = len(child) - len(child.lstrip())
+    assert child_indent > with_indent, (
+        f"`with:` child not indented as a mapping:\n{yaml_text}"
+    )
+    assert child.strip().startswith("python-version:"), (
+        f"expected `python-version:` mapping entry under `with:`, got: {child!r}\n{yaml_text}"
+    )
+    assert "3.13" in child, f"python-version value missing:\n{yaml_text}"
+
+
+# ── Adversarial fix 2: green theater — just install step present ──────────────
+
+def test_build_jobs_includes_just_install_when_just_commands_used():
+    """Fix 2: when valid_commands includes 'just test', a just-install step must appear."""
+    ci_mod = _load_module_py()
+
+    jobs = ci_mod._build_jobs(
+        job_ids=["python-test"],
+        matrix_entries=[{"lang": "python", "version": "3.13"}],
+        valid_refs=["actions/checkout@v4", "astral-sh/setup-uv@v5"],
+        fixme_refs=[],
+        valid_commands=["just test", "just lint"],
+    )
+
+    all_steps = jobs["python-test"]["steps"]
+    step_names = [s.get("name", "") for s in all_steps]
+    step_uses = [s.get("uses", "") for s in all_steps]
+
+    # Must have a step that installs `just`
+    has_just_install = (
+        any("just" in (s.get("with") or {}).get("tool", "") for s in all_steps if isinstance(s.get("with"), dict))
+        or any("install-action" in u and "just" in str(s) for u, s in zip(step_uses, all_steps))
+        or any("just" in n.lower() and "install" in n.lower() for n in step_names)
+    )
+    assert has_just_install, (
+        f"No just-install step found when commands use 'just'. Steps: {all_steps}"
+    )
+
+
+def test_build_jobs_no_just_install_when_no_just_commands():
+    """Fix 2 guard: just-install step must NOT appear when no just commands are used."""
+    ci_mod = _load_module_py()
+
+    jobs = ci_mod._build_jobs(
+        job_ids=["python-test"],
+        matrix_entries=[{"lang": "python", "version": "3.13"}],
+        valid_refs=["actions/checkout@v4", "astral-sh/setup-uv@v5"],
+        fixme_refs=[],
+        valid_commands=["uv run pytest"],
+    )
+
+    all_steps = jobs["python-test"]["steps"]
+    has_just_install = any(
+        "just" in str(s.get("with", {})) or
+        ("install" in s.get("name", "").lower() and "just" in s.get("name", "").lower())
+        for s in all_steps
+    )
+    assert not has_just_install, (
+        f"Unexpected just-install step when no just commands used. Steps: {all_steps}"
+    )

@@ -66,7 +66,15 @@ def _do_write(sdk, inputs, args) -> int:
     warnings: list[str] = []
 
     if not readme_body:
-        warnings.append("no readme_body in frozen plan; nothing drafted")
+        mode = inputs.mode
+        if mode == "init":
+            warnings.append(
+                "WARN: readme-draft produced no readme_body — the draft agent step "
+                "did not run or returned empty; README.md will not be written. "
+                "Re-run with --refresh readme-draft to trigger the agent."
+            )
+        else:
+            warnings.append("no readme_body in frozen plan; nothing drafted")
         result = sdk.ModuleResult(
             module_id="readme-draft",
             step_id=args.step,

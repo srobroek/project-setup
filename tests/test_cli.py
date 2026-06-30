@@ -126,6 +126,30 @@ def test_dry_run_flag_passed_to_pipeline(tmp_path):
     assert captured_kwargs.get("dry_run") is True
 
 
+# --------------------------------------------------------------------------- #
+# --check-answers wired through                                               #
+# --------------------------------------------------------------------------- #
+def test_check_answers_flag_passed_to_pipeline(tmp_path):
+    """--check-answers is forwarded as check_only=True to run_pipeline."""
+    if shutil.which("uv") is None:
+        pytest.skip("uv not available")
+
+    cli = _load_cli_fresh()
+    captured_kwargs = {}
+
+    def fake_pipeline(project_dir, io, **kwargs):
+        captured_kwargs.update(kwargs)
+        result = MagicMock()
+        result.success = True
+        result.errors = []
+        return result
+
+    with patch.object(cli, "run_pipeline", side_effect=fake_pipeline):
+        cli.main(["--project-dir", str(tmp_path), "--check-answers", "--non-interactive"])
+
+    assert captured_kwargs.get("check_only") is True
+
+
 def test_non_interactive_flag_passed_to_pipeline(tmp_path):
     """--non-interactive is forwarded as non_interactive=True to run_pipeline."""
     if shutil.which("uv") is None:
