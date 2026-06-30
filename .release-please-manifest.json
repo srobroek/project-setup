@@ -17,7 +17,7 @@
   "skills/project-setup/modules/lang-ts": "1.1.0",
   "skills/project-setup/modules/license-write": "2.0.1",
   "skills/project-setup/modules/mcp-config": "1.1.0",
-  "skills/project-setup/modules/org-policy": "1.0.0",
+  "skills/project-setup/modules/org-policy": "1.0.1",
   "skills/project-setup/modules/package-add": "1.1.0",
   "skills/project-setup/modules/precommit-setup": "1.0.1",
   "skills/project-setup/modules/quality-hooks": "1.1.0",
