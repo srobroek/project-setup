@@ -124,6 +124,13 @@ def test_manifest_parses_and_is_valid():
     input_keys = {inp.key for inp in mani.inputs}
     assert "python_version" in input_keys
     assert "framework" in input_keys
+    # Pre-resolved pins must be declarable as optional inputs so an answers-file
+    # (or pre-resolving agent) can supply them without the live resolve step.
+    # Without these declarations the keys are dropped during answer resolution
+    # and pyproject ships with empty dependencies.
+    assert "pinned_deps" in input_keys
+    assert "dev_deps" in input_keys
+    assert "ruff_version" in input_keys
 
 
 # ── happy path ───────────────────────────────────────────────────────────────
@@ -180,6 +187,59 @@ def test_happy_path_appends_precommit_hooks(tmp_path):
     pc_content = (project / ".pre-commit-config.yaml").read_text()
     assert "astral-sh/ruff-pre-commit" in pc_content
     assert "ruff-format" in pc_content
+
+
+# ── pre-resolved pins flow to pyproject (Tier-2 deps fix) ─────────────────────
+
+def test_supplied_pins_written_to_pyproject(tmp_path):
+    """Pins present in the frozen plan's answers are written to pyproject.toml.
+
+    Regression for the Tier-2 deps gap: pinned_deps/dev_deps are now declarable
+    inputs, so a pre-resolving agent or an --answers run can supply them without
+    the live resolve step. Uses reproduce mode so pin verification (network) is
+    skipped — we assert only on the rendered manifest.
+    """
+    project = tmp_path / "myapp"
+    project.mkdir()
+    (project / "pyproject.toml").write_text(
+        "[project]\nname = \"myapp\"\nversion = \"0.1.0\"\ndependencies = []\n\n"
+        "[dependency-groups]\ndev = []\n"
+    )
+    (project / ".gitignore").write_text("# base\n")
+
+    plan = {
+        "schema_version": 1,
+        "mode": "reproduce",  # skip network pin verification
+        "order": ["lang-python"],
+        "modules": {
+            "lang-python": {
+                "id": "lang-python",
+                "version": "1.0.0",
+                "reconcile": True,
+                "module_rel_root": _MODULE_REL,
+                "answers": {
+                    "python_version": "3.13",
+                    "framework": "fastapi",
+                    "pinned_deps": ["fastapi@0.115.0", "uvicorn@0.32.0"],
+                    "dev_deps": ["pytest@8.3.0", "ruff@0.7.0"],
+                },
+                "steps": [{"id": "write", "kind": "python"}],
+            }
+        },
+    }
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps(plan))
+
+    proc = _run(project, plan_path)
+    assert proc.returncode == 0, proc.stderr
+
+    content = (project / "pyproject.toml").read_text()
+    # Rendered as valid PEP 508 (== , no @-form leak)
+    assert "fastapi==0.115.0" in content
+    assert "uvicorn==0.32.0" in content
+    assert "pytest==8.3.0" in content
+    assert "ruff==0.7.0" in content
+    assert "fastapi@" not in content and "uvicorn@" not in content
 
 
 # ── tool-missing → warn+continue ─────────────────────────────────────────────
