@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.3](https://github.com/srobroek/project-setup/compare/package-add-v1.1.2...package-add-v1.1.3) (2026-06-30)
+
+
+### Bug Fixes
+
+* harden CI YAML renderer (single recursive emitter) and make go.mod version configurable ([7aa2b77](https://github.com/srobroek/project-setup/commit/7aa2b77317e740d81e79d9a9bdc340a0efc71cca))
+* **package-add:** make go.mod go version configurable, default to a current line ([37ada54](https://github.com/srobroek/project-setup/commit/37ada54af40bf3332bd89d3ab945fd14d293663f))
+
 ## [1.1.2](https://github.com/srobroek/project-setup/compare/package-add-v1.1.1...package-add-v1.1.2) (2026-06-30)
 
 
