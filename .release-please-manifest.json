@@ -1,5 +1,5 @@
 {
-  "skills/project-setup": "0.3.2",
+  "skills/project-setup": "0.3.3",
   "skills/project-setup/modules/agents-md": "1.0.0",
   "skills/project-setup/modules/apm-install": "1.0.0",
   "skills/project-setup/modules/ci-github-actions": "1.1.0",
