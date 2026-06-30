@@ -198,6 +198,35 @@ def normalize_origin(raw_origin: str) -> str:
     return s
 
 
+def clone_url(origin: str) -> str:
+    """Return a fetchable URL for *origin*.
+
+    ``normalize_origin`` deliberately strips the URL scheme (``https://``,
+    ``git@``, etc.) so that different URL forms for the same repository all
+    collapse to the same ``host/owner/repo`` string used as the cache-key seed.
+    That scheme-less string cannot be passed directly to ``git clone`` — git
+    requires a full URL.  This function restores the scheme:
+
+    * If *origin* already starts with ``https://``, ``http://``, ``git@``,
+      ``ssh://``, or is an absolute filesystem path (``/`` or ``file:``),
+      it is returned unchanged.
+    * Otherwise it is treated as a normalized ``host/owner/repo`` string and
+      ``https://`` is prepended.
+
+    Standard library only (stdlib ``str`` operations only, no network access).
+    """
+    if (
+        origin.startswith("https://")
+        or origin.startswith("http://")
+        or origin.startswith("git@")
+        or origin.startswith("ssh://")
+        or origin.startswith("file:")
+        or origin.startswith("/")
+    ):
+        return origin
+    return f"https://{origin}"
+
+
 def cache_key(locator: Locator) -> str:
     """Return a short stable hex digest for *locator*.
 

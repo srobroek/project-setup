@@ -772,3 +772,142 @@ class TestSourcesRoundTrip:
         assert first_source.get("extra_field") == "preserve-me", (
             f"extra_field was dropped on round-trip: {first_source}"
         )
+
+
+# ---------------------------------------------------------------------------
+# First-run catalog seeding via the CLI command layer
+# ---------------------------------------------------------------------------
+
+class TestListCatalogFirstRunSeed:
+    """_cmd_list_catalog seeds config.toml with the first-party URL on first run.
+
+    Isolation: call cli._cmd_list_catalog(home=tmp_path) directly so that
+    seed_default_catalog_url and addon_catalog_urls run for real against an
+    isolated home directory.  Only fetch_addon_catalog is stubbed (network).
+    """
+
+    def _config_path(self, home: "Path") -> "Path":
+        return home / ".config" / "project-setup" / "config.toml"
+
+    def test_empty_home_seeds_config_on_list_catalog(self, tmp_path, monkeypatch):
+        """Starting from an empty home, _cmd_list_catalog creates config.toml
+        with [catalog].urls containing FIRST_PARTY_CATALOG_URL."""
+        import sdk as _sdk_mod
+
+        # Stub only the network fetch — seeding + catalog URL resolution run for real.
+        monkeypatch.setattr(_sdk_mod, "fetch_addon_catalog", lambda url, **kw: [])
+        # Ensure PROJECT_SETUP_CATALOG_URL is absent so env doesn't inject a URL.
+        monkeypatch.delenv("PROJECT_SETUP_CATALOG_URL", raising=False)
+
+        cli = _load_cli_fresh()
+        cfg_path = self._config_path(tmp_path)
+        assert not cfg_path.exists(), "Pre-condition: config.toml must not exist"
+
+        rc = cli._cmd_list_catalog(home=tmp_path)
+        assert rc == 0
+
+        # Config file must now exist and contain the first-party URL.
+        assert cfg_path.is_file(), "config.toml was not created by the seed step"
+        import tomllib as _tomllib
+        with open(cfg_path, "rb") as fh:
+            data = _tomllib.load(fh)
+        urls = data.get("catalog", {}).get("urls", [])
+        assert _sdk_mod.FIRST_PARTY_CATALOG_URL in urls, (
+            f"FIRST_PARTY_CATALOG_URL not in seeded [catalog].urls: {urls}"
+        )
+
+    def test_seed_is_idempotent_on_second_call(self, tmp_path, monkeypatch):
+        """A second call to _cmd_list_catalog does not duplicate or overwrite the URL."""
+        import sdk as _sdk_mod
+
+        monkeypatch.setattr(_sdk_mod, "fetch_addon_catalog", lambda url, **kw: [])
+        monkeypatch.delenv("PROJECT_SETUP_CATALOG_URL", raising=False)
+
+        cli = _load_cli_fresh()
+
+        # First call: seeds
+        rc1 = cli._cmd_list_catalog(home=tmp_path)
+        assert rc1 == 0
+
+        cfg_path = self._config_path(tmp_path)
+        assert cfg_path.is_file()
+
+        import tomllib as _tomllib
+        with open(cfg_path, "rb") as fh:
+            data_after_first = _tomllib.load(fh)
+        urls_after_first = data_after_first.get("catalog", {}).get("urls", [])
+
+        # Second call: must not error or duplicate
+        rc2 = cli._cmd_list_catalog(home=tmp_path)
+        assert rc2 == 0
+
+        with open(cfg_path, "rb") as fh:
+            data_after_second = _tomllib.load(fh)
+        urls_after_second = data_after_second.get("catalog", {}).get("urls", [])
+
+        assert urls_after_first == urls_after_second, (
+            f"Second call mutated [catalog].urls: {urls_after_first!r} → {urls_after_second!r}"
+        )
+        assert urls_after_second.count(_sdk_mod.FIRST_PARTY_CATALOG_URL) == 1, (
+            f"URL was duplicated: {urls_after_second}"
+        )
+
+    def test_existing_catalog_url_not_overwritten_by_seed(self, tmp_path, monkeypatch):
+        """When the user already has [catalog].urls set, the seed does NOT
+        overwrite it — the no-clobber contract is respected through the CLI path."""
+        import sdk as _sdk_mod
+
+        monkeypatch.setattr(_sdk_mod, "fetch_addon_catalog", lambda url, **kw: [])
+        monkeypatch.delenv("PROJECT_SETUP_CATALOG_URL", raising=False)
+
+        # Pre-write a config.toml with a custom URL.
+        cfg_path = self._config_path(tmp_path)
+        cfg_path.parent.mkdir(parents=True, exist_ok=True)
+        user_url = "https://my-org.example.com/my-catalog.json"
+        cfg_path.write_text(
+            f'[catalog]\nurls = ["{user_url}"]\n',
+            encoding="utf-8",
+        )
+
+        cli = _load_cli_fresh()
+        rc = cli._cmd_list_catalog(home=tmp_path)
+        assert rc == 0
+
+        import tomllib as _tomllib
+        with open(cfg_path, "rb") as fh:
+            data = _tomllib.load(fh)
+        urls = data.get("catalog", {}).get("urls", [])
+
+        assert user_url in urls, f"User URL was removed: {urls}"
+        assert _sdk_mod.FIRST_PARTY_CATALOG_URL not in urls, (
+            f"Seed overwrote user config: {urls}"
+        )
+
+    def test_env_var_url_prevents_seed_overwrite(self, tmp_path, monkeypatch):
+        """When PROJECT_SETUP_CATALOG_URL is set, seed_default_catalog_url still
+        seeds (env var is a runtime-only source, separate from the config file),
+        BUT the seeded config.toml must not clobber a pre-existing [catalog].urls.
+        If the config is empty, the first-party URL is seeded; the env var URL
+        is returned by addon_catalog_urls at runtime (union dedup)."""
+        import sdk as _sdk_mod
+
+        env_url = "https://env.example.com/catalog.json"
+        monkeypatch.setenv("PROJECT_SETUP_CATALOG_URL", env_url)
+        monkeypatch.setattr(_sdk_mod, "fetch_addon_catalog", lambda url, **kw: [])
+
+        cli = _load_cli_fresh()
+        cfg_path = self._config_path(tmp_path)
+        assert not cfg_path.exists()
+
+        rc = cli._cmd_list_catalog(home=tmp_path)
+        assert rc == 0
+
+        # Config is seeded with the first-party URL (env var doesn't stop seeding).
+        assert cfg_path.is_file(), "config.toml was not created even with env var set"
+        import tomllib as _tomllib
+        with open(cfg_path, "rb") as fh:
+            data = _tomllib.load(fh)
+        urls_in_file = data.get("catalog", {}).get("urls", [])
+        assert _sdk_mod.FIRST_PARTY_CATALOG_URL in urls_in_file, (
+            f"First-party URL missing from seeded config: {urls_in_file}"
+        )
