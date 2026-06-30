@@ -631,15 +631,12 @@ def test_use_just_false_drops_just_commands(tmp_path):
 # ── Adversarial fix 1: with: dict must render as YAML mapping, not string ────
 
 def test_render_ci_yaml_with_block_is_yaml_mapping():
-    """Fix 1: a step's `with:` dict must render as a proper YAML mapping, not a stringified dict."""
-    try:
-        import yaml  # pyyaml
-    except ImportError:
-        import subprocess as _sp
-        import sys as _sys
-        _sp.run([_sys.executable, "-m", "pip", "install", "--quiet", "pyyaml"], check=True)
-        import yaml
+    """Fix 1: a step's `with:` dict must render as a proper YAML mapping, not a stringified dict.
 
+    Validated WITHOUT pyyaml — the runner core is stdlib-only and CI has no pyyaml.
+    We assert the rendered TEXT has an indented `with:` header followed by a
+    `python-version: '3.13'` mapping line, and contains no `str(dict)` artifact.
+    """
     ci_mod = _load_module_py()
     plan_dict = {
         "name": "CI",
@@ -662,20 +659,29 @@ def test_render_ci_yaml_with_block_is_yaml_mapping():
 
     yaml_text = ci_mod.render_ci_yaml(plan_dict)
 
-    # Must parse cleanly
-    parsed = yaml.safe_load(yaml_text)
-    step_with = parsed["jobs"]["python-test"]["steps"][1]
-    assert isinstance(step_with.get("with"), dict), (
-        f"`with:` must be a YAML mapping (dict), got: {step_with.get('with')!r}\n"
-        f"YAML output:\n{yaml_text}"
-    )
-    assert step_with["with"].get("python-version") == "3.13", (
-        f"python-version value wrong in rendered YAML:\n{yaml_text}"
-    )
-    # The raw text must NOT contain str(dict) artifacts like curly-braces
+    # The str(dict) regression artifact must be absent.
     assert "{'python-version'" not in yaml_text, (
         f"Stringified dict found in YAML output:\n{yaml_text}"
     )
+    # `with:` must appear as a block header (its own line, nothing after the colon),
+    # immediately followed by an indented `python-version:` mapping entry.
+    lines = yaml_text.splitlines()
+    with_idx = next(
+        (i for i, ln in enumerate(lines) if ln.strip() == "with:"), None
+    )
+    assert with_idx is not None, (
+        f"expected a `with:` block header line; got:\n{yaml_text}"
+    )
+    with_indent = len(lines[with_idx]) - len(lines[with_idx].lstrip())
+    child = lines[with_idx + 1]
+    child_indent = len(child) - len(child.lstrip())
+    assert child_indent > with_indent, (
+        f"`with:` child not indented as a mapping:\n{yaml_text}"
+    )
+    assert child.strip().startswith("python-version:"), (
+        f"expected `python-version:` mapping entry under `with:`, got: {child!r}\n{yaml_text}"
+    )
+    assert "3.13" in child, f"python-version value missing:\n{yaml_text}"
 
 
 # ── Adversarial fix 2: green theater — just install step present ──────────────
