@@ -25,14 +25,16 @@ _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
 _MODULE_REL = "modules/justfile-write"
 
-# Verbatim expected justfile content (matches legacy heredoc lines 619–641).
+# Verbatim expected justfile content (must match module.py _JUSTFILE).
+# test:/build:/dev: use failing stubs (exit 1) so CI is never green-while-
+# doing-nothing; clean: keeps the harmless TODO echo.
 _EXPECTED_JUSTFILE = """\
 default:
     @just --list
 
 # Run tests
 test:
-    @echo "TODO: configure test command"
+    @echo "ERROR: no test command configured — edit this justfile to add one (e.g. uv run pytest, bun test)" && exit 1
 
 # Lint and format
 lint:
@@ -40,11 +42,11 @@ lint:
 
 # Build
 build:
-    @echo "TODO: configure build command"
+    @echo "ERROR: no build command configured — edit this justfile to add one" && exit 1
 
 # Start dev server
 dev:
-    @echo "TODO: configure dev command"
+    @echo "ERROR: no dev command configured — edit this justfile to add one" && exit 1
 
 # Clean build artifacts
 clean:

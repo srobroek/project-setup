@@ -29,7 +29,7 @@ default:
 
 # Run tests
 test:
-    @echo "TODO: configure test command"
+    @echo "ERROR: no test command configured — edit this justfile to add one (e.g. uv run pytest, bun test)" && exit 1
 
 # Lint and format
 lint:
@@ -37,11 +37,11 @@ lint:
 
 # Build
 build:
-    @echo "TODO: configure build command"
+    @echo "ERROR: no build command configured — edit this justfile to add one" && exit 1
 
 # Start dev server
 dev:
-    @echo "TODO: configure dev command"
+    @echo "ERROR: no dev command configured — edit this justfile to add one" && exit 1
 
 # Clean build artifacts
 clean:
