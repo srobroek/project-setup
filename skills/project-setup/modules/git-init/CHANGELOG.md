@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/srobroek/project-setup/compare/git-init-v1.0.1...git-init-v1.1.0) (2026-06-30)
+
+
+### Features
+
+* **git-init:** optional initial commit after the scaffold is written ([fcb152f](https://github.com/srobroek/project-setup/commit/fcb152fe83344dc352a1a466bd230bf5c0ed8fe6))
+
+
+### Bug Fixes
+
+* fill AGENTS.md, language-aware justfile, optional initial git commit ([b884adc](https://github.com/srobroek/project-setup/commit/b884adcdd473f882d04fa27ee161f3c839bb638f))
+
 ## [1.0.1](https://github.com/srobroek/project-setup/compare/git-init-v1.0.0...git-init-v1.0.1) (2026-06-30)
 
 
