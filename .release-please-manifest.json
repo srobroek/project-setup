@@ -1,7 +1,7 @@
 {
   "skills/project-setup": "0.3.2",
   "skills/project-setup/modules/agents-md": "1.0.0",
-  "skills/project-setup/modules/apm-install": "1.0.0",
+  "skills/project-setup/modules/apm-install": "1.0.1",
   "skills/project-setup/modules/ci-github-actions": "1.1.0",
   "skills/project-setup/modules/codex-config": "1.0.0",
   "skills/project-setup/modules/core-identity": "1.1.0",
