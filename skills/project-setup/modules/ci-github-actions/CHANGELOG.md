@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.3](https://github.com/srobroek/project-setup/compare/ci-github-actions-v1.1.2...ci-github-actions-v1.1.3) (2026-06-30)
+
+
+### Bug Fixes
+
+* **ci-github-actions:** render YAML via one recursive emitter; structural FIXME header ([e07e5b0](https://github.com/srobroek/project-setup/commit/e07e5b07d062421cc229b77907c309c56a9dfb58))
+* harden CI YAML renderer (single recursive emitter) and make go.mod version configurable ([7aa2b77](https://github.com/srobroek/project-setup/commit/7aa2b77317e740d81e79d9a9bdc340a0efc71cca))
+
 ## [1.1.2](https://github.com/srobroek/project-setup/compare/ci-github-actions-v1.1.1...ci-github-actions-v1.1.2) (2026-06-30)
 
 
