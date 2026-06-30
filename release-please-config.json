@@ -9,7 +9,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "apm.yml"
+          "path": "/apm.yml"
         }
       ]
     },
@@ -20,7 +20,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/agents-md/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -31,7 +31,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/apm-install/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -42,7 +42,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/ci-github-actions/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -53,7 +53,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/codex-config/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -64,7 +64,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/core-identity/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -75,7 +75,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/dirs-scaffold/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -86,7 +86,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/env-example/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -97,7 +97,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/git-init/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -108,7 +108,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/github-repo/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -119,7 +119,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/gitignore-generate/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -130,7 +130,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/justfile-write/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -141,7 +141,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/lang-go/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -152,7 +152,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/lang-python/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -163,7 +163,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/lang-rust/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -174,7 +174,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/lang-ts/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -185,7 +185,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/license-write/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -196,7 +196,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/mcp-config/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -207,7 +207,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/org-policy/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -218,7 +218,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/package-add/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -229,7 +229,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/precommit-setup/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -240,7 +240,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/quality-hooks/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -251,7 +251,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/readme-draft/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -262,7 +262,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/speckit-bridge/module.toml"
+          "path": "module.toml"
         }
       ]
     },
@@ -273,7 +273,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "skills/project-setup/modules/stack-adr/module.toml"
+          "path": "module.toml"
         }
       ]
     }
