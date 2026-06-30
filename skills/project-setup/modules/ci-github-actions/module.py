@@ -87,6 +87,14 @@ def _needs_quoting(value: str) -> bool:
     # Values that look like booleans or nulls must be quoted if they are strings
     if value.lower() in ("true", "false", "yes", "no", "null", "~"):
         return True
+    # Values that look like numbers (int or float) must be quoted when they are
+    # strings — e.g. python-version: '3.13' should not become the float 3.13.
+    # This covers version strings like "3.13", "1.22", "21", etc.
+    try:
+        float(value)
+        return True  # Looks like a number → must quote to preserve string type
+    except ValueError:
+        pass
     return False
 
 
@@ -250,11 +258,24 @@ def render_ci_yaml(plan_dict: dict) -> str:
                     if isinstance(step, dict):
                         first = True
                         for sk, sv in step.items():
-                            if first:
-                                lines.append(f"      - {_scalar(sk)}: {_scalar(sv)}")
-                                first = False
+                            sk_s2 = _scalar(sk)
+                            if isinstance(sv, dict):
+                                # e.g. `with: {python-version: '3.13'}` → render as
+                                # indented mapping, never as a stringified dict literal
+                                if first:
+                                    lines.append(f"      - {sk_s2}:")
+                                    first = False
+                                else:
+                                    lines.append(f"        {sk_s2}:")
+                                indent = "          "
+                                for wk, wv in sv.items():
+                                    lines.append(f"{indent}{_scalar(wk)}: {_scalar(wv)}")
                             else:
-                                lines.append(f"        {_scalar(sk)}: {_scalar(sv)}")
+                                if first:
+                                    lines.append(f"      - {sk_s2}: {_scalar(sv)}")
+                                    first = False
+                                else:
+                                    lines.append(f"        {sk_s2}: {_scalar(sv)}")
                     else:
                         lines.append(f"      - {_scalar(step)}")
             else:
@@ -508,6 +529,15 @@ def _build_jobs(
             if rust_ref:
                 steps.append({"uses": rust_ref})
 
+        # Install `just` if any command uses it (green-theater guard: CI must not
+        # be green-while-doing-nothing because `just` is not on ubuntu-latest).
+        if any(cmd.startswith("just ") or cmd == "just" for cmd in valid_commands):
+            steps.append({
+                "name": "Install just",
+                "uses": "taiki-e/install-action@v2",
+                "with": {"tool": "just"},
+            })
+
         # Command steps — filter to those relevant to this job
         for cmd in valid_commands:
             steps.append({"name": f"Run: {cmd}", "run": cmd})
@@ -626,7 +656,15 @@ def _do_write(sdk, inputs, args) -> int:
 
     # ── 7. Zero-jobs guard (FR-014) ──────────────────────────────────────── #
     if not job_ids:
-        warnings.append("ci_plan_jobs is empty — no CI workflow written")
+        if inputs.mode == "init":
+            warnings.append(
+                "WARN: ci-github-actions produced no ci_plan_jobs — the resolve "
+                "agent step did not run or returned empty; .github/workflows/ci.yml "
+                "will not be written. Re-run with --refresh ci-github-actions to "
+                "trigger the agent."
+            )
+        else:
+            warnings.append("ci_plan_jobs is empty — no CI workflow written")
         result = sdk.ModuleResult(
             module_id="ci-github-actions",
             step_id=args.step,
