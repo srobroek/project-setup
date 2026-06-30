@@ -10,6 +10,16 @@ Every capability is a self-contained **module** the runner discovers, orders,
 and executes. You drive the runner; the runner is the source of truth for
 orchestration. Read this whole file before running it.
 
+**Module distribution.** Modules are **bundled** inside this skill tree
+(`modules/<id>/`) and ship as part of the skill — a consumer installing the
+`project-setup` skill (e.g. from a marketplace tag) gets the module set baked
+into that tag's tree. Each module ALSO carries its own release tag
+(`<id>-vX.Y.Z`) so it can version and be fetched independently via a declared
+git source (see step 1 below). Maintenance note: because the marketplace bundle
+ships the umbrella tag's tree, a module-only fix must be followed by a fresh
+`project-setup` release so the bundled tree (and any consumer pinned to it) picks
+the fix up — the module's own tag advancing is not enough for bundle consumers.
+
 `uv` is a **hard prerequisite**. The runner is Python launched via `uv run`. If
 `uv` is missing, the runner exits with an install instruction — do not try to
 work around it, install `uv` (https://docs.astral.sh/uv/).
