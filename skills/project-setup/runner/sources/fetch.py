@@ -155,6 +155,18 @@ def fetch_source(locator: "Locator") -> FetchResult:
             if not p.is_dir():
                 return FetchResult(ok=False, root_path=None, locator=locator,
                                    skipped_reason=f"local path does not exist: {locator.origin}")
+            # Resolve subdir for local sources too (mirrors the git path below),
+            # so a local source with a subdir points at the module root, not the
+            # repo root.
+            if locator.subdir:
+                resolved = p / locator.subdir
+                if not resolved.is_dir():
+                    return FetchResult(ok=False, root_path=None, locator=locator,
+                                       skipped_reason=(
+                                           f"subdir {locator.subdir!r} not found in "
+                                           f"local path {locator.origin!r}"
+                                       ))
+                return FetchResult(ok=True, root_path=resolved, locator=locator)
             return FetchResult(ok=True, root_path=p, locator=locator)
 
         # git locator

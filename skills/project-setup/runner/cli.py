@@ -229,6 +229,63 @@ def _build_parser() -> argparse.ArgumentParser:
             "is created inside this dir."
         ),
     )
+
+    # ── Add external module source ────────────────────────────────────────────── #
+    p.add_argument(
+        "--add-module",
+        default=None,
+        metavar="LOCATOR",
+        help=(
+            "Fetch an external module source and register it in "
+            ".project-setup/sources.toml so it is available on the next run. "
+            "LOCATOR may be a GitHub shorthand (owner/repo, owner/repo/subdir, "
+            "owner/repo#ref), a full HTTPS/SSH git URL, or a local path. "
+            "Exits after updating sources.toml without running the pipeline."
+        ),
+    )
+    p.add_argument(
+        "--ref",
+        default=None,
+        metavar="REF",
+        help=(
+            "Git ref (tag, branch, SHA) for --add-module. Overrides any ref "
+            "embedded in the locator string via '#ref'."
+        ),
+    )
+    p.add_argument(
+        "--subdir",
+        default=None,
+        metavar="PATH",
+        help=(
+            "Subdirectory within the repository for --add-module. Overrides "
+            "any subdir embedded in the locator string."
+        ),
+    )
+
+    # ── List addon catalog ────────────────────────────────────────────────────── #
+    p.add_argument(
+        "--list-catalog",
+        action="store_true",
+        default=False,
+        help=(
+            "List available addon modules from configured catalogs "
+            "(PROJECT_SETUP_CATALOG_URL env var or ~/.config/project-setup/config.toml "
+            "[catalog] urls). Exits after printing without running the pipeline."
+        ),
+    )
+
+    # ── Add module from catalog ───────────────────────────────────────────────── #
+    p.add_argument(
+        "--add-module-from-catalog",
+        default=None,
+        metavar="NAME",
+        help=(
+            "Look up NAME in the configured addon catalogs, resolve its locator, "
+            "and register it in .project-setup/sources.toml (same as --add-module "
+            "but driven by catalog name rather than a raw locator). "
+            "Exits after updating sources.toml without running the pipeline."
+        ),
+    )
     return p
 
 
@@ -512,6 +569,290 @@ def _scaffold_new_module(module_id: str, dest_dir: Path) -> int:
 
 
 # --------------------------------------------------------------------------- #
+# Add-module helpers (CLI commands --add-module / --add-module-from-catalog)  #
+# --------------------------------------------------------------------------- #
+
+def _read_sources_toml(project_dir: Path) -> tuple[list[dict], str]:
+    """Read existing .project-setup/sources.toml and return (sources, skill_version).
+
+    Returns ([], "") when the file is absent or unreadable.  Never raises.
+    """
+    import tomllib as _tomllib
+
+    src_toml = project_dir / ".project-setup" / "sources.toml"
+    if not src_toml.is_file():
+        return [], ""
+    try:
+        with open(src_toml, "rb") as fh:
+            data = _tomllib.load(fh)
+    except Exception:
+        return [], ""
+    skill_version = data.get("meta", {}).get("skill_version", "") or ""
+    raw_sources = data.get("source", [])
+    sources = [s for s in raw_sources if isinstance(s, dict)]
+    return sources, skill_version
+
+
+def _sources_dedup_key(source: dict) -> tuple[str, str, str]:
+    """Return a tuple used to detect duplicate [[source]] records.
+
+    Two records are duplicates when they share the same (locator, ref, subdir).
+    The locator is normalised to the canonical origin form so that different
+    URL forms (https vs shorthand) for the same repo do not create duplicates.
+    """
+    import locator as _loc_mod
+
+    raw = source.get("locator", "")
+    ref = source.get("ref", "") or ""
+    subdir = source.get("subdir", "") or ""
+    try:
+        loc = _loc_mod.parse_locator(raw)
+        # Normalise: for git use origin+ref+subdir; for local use origin only.
+        if loc.kind == "git":
+            return (loc.origin, ref or loc.ref, subdir or loc.subdir)
+        return (loc.origin, "", subdir or loc.subdir)
+    except Exception:
+        # If unparseable just use the raw string.
+        return (raw, ref, subdir)
+
+
+def _cmd_add_module(project_dir: Path, locator_str: str, ref: str | None, subdir: str | None) -> int:
+    """Implement --add-module: fetch, validate, register in sources.toml.
+
+    Returns 0 on success, 1 on error (messages printed to stderr).
+    """
+    import locator as _loc_mod
+    import fetch as _fetch_mod
+    import discover as _discover_mod
+    import persist as _persist_mod
+
+    # ── 1. Parse the locator ──────────────────────────────────────────────── #
+    try:
+        loc = _loc_mod.parse_locator(locator_str)
+    except ValueError as exc:
+        print(f"Error: invalid locator {locator_str!r}: {exc}", file=sys.stderr)
+        return 1
+
+    # Apply --ref / --subdir overrides.
+    if ref:
+        loc = _loc_mod.Locator(kind=loc.kind, origin=loc.origin, subdir=loc.subdir, ref=ref)
+    if subdir:
+        loc = _loc_mod.Locator(kind=loc.kind, origin=loc.origin, subdir=subdir, ref=loc.ref)
+
+    # ── 2. Fetch ──────────────────────────────────────────────────────────── #
+    print(f"Fetching {locator_str!r} …", flush=True)
+    result = _fetch_mod.fetch_source(loc)
+    if not result.ok:
+        print(
+            f"Error: fetch failed for {locator_str!r}: {result.skipped_reason}",
+            file=sys.stderr,
+        )
+        return 1
+
+    # ── 3. Discover modules in the fetched root ────────────────────────────── #
+    from discover import build_discovery_roots, discover_modules, _RootEntry, RootKind
+
+    fetched_root = result.root_path
+    # Build a minimal roots list: only the fetched source (no project/bundled)
+    # so we validate JUST what's in this source, not the whole merged graph.
+    root_entry = _RootEntry(path=fetched_root, kind=RootKind.FETCHED)
+    # discover_modules accepts the roots list; pass an empty bundled_root so the
+    # default_enabled constraint is not enforced (no bundled root in scope).
+    modules, report = discover_modules([root_entry], bundled_root=fetched_root / "__nonexistent__")
+    if not modules:
+        error_detail = ""
+        if report.hard_errors:
+            error_detail = " (" + "; ".join(e.how_to_fix for e in report.hard_errors) + ")"
+        print(
+            f"Error: no valid modules found at {locator_str!r}{error_detail}.\n"
+            f"  Checked path: {fetched_root}\n"
+            f"  A valid module directory contains a module.toml with a [module] id.",
+            file=sys.stderr,
+        )
+        return 1
+
+    module_ids = sorted(modules.keys())
+    print(f"Found {len(module_ids)} module(s): {', '.join(module_ids)}")
+
+    # ── 4. Read existing sources.toml + dedupe + write ─────────────────────── #
+    project_dir.mkdir(parents=True, exist_ok=True)
+    existing_sources, skill_version = _read_sources_toml(project_dir)
+
+    # Build the new source record.
+    new_record: dict = {"locator": locator_str}
+    # Store non-default ref explicitly so sources.toml is self-describing.
+    effective_ref = loc.ref if loc.ref and loc.ref != "HEAD" else ""
+    if effective_ref:
+        new_record["ref"] = effective_ref
+    if loc.subdir:
+        new_record["subdir"] = loc.subdir
+
+    # Dedup: skip if a record with the same normalised key already exists.
+    new_key = _sources_dedup_key(new_record)
+    for existing in existing_sources:
+        if _sources_dedup_key(existing) == new_key:
+            print(
+                f"Source {locator_str!r} is already registered in "
+                f".project-setup/sources.toml — no change needed.\n"
+                f"Available module ids from this source: {', '.join(module_ids)}",
+            )
+            return 0
+
+    merged = existing_sources + [new_record]
+    _persist_mod.write_sources_toml(project_dir, merged, skill_version=skill_version)
+
+    sources_path = project_dir / ".project-setup" / "sources.toml"
+    print(
+        f"\n"
+        f"Registered source in {sources_path}\n"
+        f"Available module ids: {', '.join(module_ids)}\n"
+        f"\n"
+        f"Next steps:\n"
+        f"  1. Add the module id(s) to the 'enabled' list in your answers file\n"
+        f"     or pass them via --answers with \"enabled\": [...]\n"
+        f"  2. Run the runner normally — it will fetch and discover the source\n"
+        f"     automatically on the next run.\n"
+        f"\n"
+        f"  Tip: use --add-module-from-catalog to browse available modules in\n"
+        f"  configured catalogs, or --list-catalog to see the full catalog.",
+    )
+    return 0
+
+
+def _cmd_list_catalog(home: Path | None = None) -> int:
+    """Implement --list-catalog: print table of available addon modules.
+
+    Returns 0 always (discovery aid; never hard-fails).
+    """
+    import sdk as _sdk_mod
+
+    urls = _sdk_mod.addon_catalog_urls(home=home)
+    if not urls:
+        print(
+            "No addon catalogs configured.\n"
+            "\n"
+            "To configure a catalog, set one of:\n"
+            "  • Environment variable: PROJECT_SETUP_CATALOG_URL=<url>\n"
+            "    (comma- or space-separated for multiple URLs)\n"
+            "  • Home config file: ~/.config/project-setup/config.toml\n"
+            "    [catalog]\n"
+            "    urls = [\"https://example.com/catalog.json\"]\n"
+            "\n"
+            "A catalog is a JSON file containing an array of module records:\n"
+            "  [{\"name\": \"...\", \"description\": \"...\", \"locator\": \"...\", \"category\": \"...\"}]\n"
+            "\n"
+            "Once a catalog is configured, use:\n"
+            "  --list-catalog                 list available modules\n"
+            "  --add-module-from-catalog NAME install a module by name",
+        )
+        return 0
+
+    all_records: list[dict] = []
+    for url in urls:
+        records = _sdk_mod.fetch_addon_catalog(url)
+        all_records.extend(records)
+
+    if not all_records:
+        print(
+            f"Catalogs configured ({len(urls)} URL(s)) but no records returned.\n"
+            "The catalog URL(s) may be unreachable or the catalog may be empty.",
+        )
+        return 0
+
+    # Print a table: name | category | locator | description
+    # Compute column widths for alignment.
+    headers = ("name", "category", "locator", "description")
+    rows = [
+        (
+            str(r.get("name", "")),
+            str(r.get("category", "")),
+            str(r.get("locator", "")),
+            str(r.get("description", "")),
+        )
+        for r in all_records
+        if isinstance(r, dict)
+    ]
+
+    col_widths = [len(h) for h in headers]
+    for row in rows:
+        for i, cell in enumerate(row):
+            col_widths[i] = max(col_widths[i], len(cell))
+
+    sep = "  "
+    header_line = sep.join(h.ljust(col_widths[i]) for i, h in enumerate(headers))
+    divider = sep.join("-" * col_widths[i] for i in range(len(headers)))
+
+    print(f"Addon modules ({len(rows)} total from {len(urls)} catalog(s)):\n")
+    print(header_line)
+    print(divider)
+    for row in rows:
+        print(sep.join(cell.ljust(col_widths[i]) for i, cell in enumerate(row)))
+
+    print(
+        f"\nTo add a module:\n"
+        f"  project-setup --add-module-from-catalog <name> --project-dir <dir>\n"
+        f"  project-setup --add-module <locator> --project-dir <dir>",
+    )
+    return 0
+
+
+def _cmd_add_module_from_catalog(
+    project_dir: Path,
+    name: str,
+    ref: str | None,
+    subdir: str | None,
+    home: Path | None = None,
+) -> int:
+    """Implement --add-module-from-catalog: look up NAME, then run --add-module.
+
+    Returns 0 on success, 1 on error.
+    """
+    import sdk as _sdk_mod
+
+    urls = _sdk_mod.addon_catalog_urls(home=home)
+    if not urls:
+        print(
+            "Error: no addon catalogs configured.\n"
+            "Use --list-catalog to see configuration instructions.",
+            file=sys.stderr,
+        )
+        return 1
+
+    # Fetch all records and find the first matching name.
+    all_records: list[dict] = []
+    for url in urls:
+        records = _sdk_mod.fetch_addon_catalog(url)
+        all_records.extend(records)
+
+    matched = next(
+        (r for r in all_records if isinstance(r, dict) and r.get("name") == name),
+        None,
+    )
+    if matched is None:
+        available = sorted({str(r.get("name", "")) for r in all_records if isinstance(r, dict) and r.get("name")})
+        print(
+            f"Error: module {name!r} not found in any configured catalog.\n"
+            f"Available names: {', '.join(available) if available else '(none)'}",
+            file=sys.stderr,
+        )
+        return 1
+
+    locator_str = matched.get("locator", "")
+    if not locator_str:
+        print(
+            f"Error: catalog record for {name!r} has no 'locator' field.",
+            file=sys.stderr,
+        )
+        return 1
+
+    # Inline ref from catalog record if the caller did not override it.
+    catalog_ref = matched.get("ref") or None
+    effective_ref = ref or catalog_ref
+
+    return _cmd_add_module(project_dir, locator_str, ref=effective_ref, subdir=subdir)
+
+
+# --------------------------------------------------------------------------- #
 # Main                                                                        #
 # --------------------------------------------------------------------------- #
 def main(argv: list[str] | None = None) -> int:
@@ -527,6 +868,30 @@ def main(argv: list[str] | None = None) -> int:
         else:
             dest_dir = project_dir / ".project-setup" / "modules"
         return _scaffold_new_module(args.new_module, dest_dir)
+
+    # ── --list-catalog: print catalog table and exit ─────────────────────────── #
+    if args.list_catalog:
+        return _cmd_list_catalog()
+
+    # ── --add-module: fetch + register in sources.toml and exit ──────────────── #
+    if args.add_module:
+        project_dir = Path(args.project_dir).expanduser().resolve()
+        return _cmd_add_module(
+            project_dir,
+            locator_str=args.add_module,
+            ref=args.ref,
+            subdir=args.subdir,
+        )
+
+    # ── --add-module-from-catalog: catalog look-up + register and exit ────────── #
+    if args.add_module_from_catalog:
+        project_dir = Path(args.project_dir).expanduser().resolve()
+        return _cmd_add_module_from_catalog(
+            project_dir,
+            name=args.add_module_from_catalog,
+            ref=args.ref,
+            subdir=args.subdir,
+        )
 
     project_dir = Path(args.project_dir).expanduser().resolve()
     if not project_dir.exists():

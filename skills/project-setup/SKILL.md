@@ -131,6 +131,72 @@ runner source to diagnose it. The runner executes a fixed pipeline:
 8. **Persist** — write committed `.project-setup/sources.toml` +
    `.project-setup/answers.toml`.
 
+## Adding / installing external modules
+
+The runner ships a set of **bundled** modules. Additional modules can come from
+external git repositories or local paths — registered as `[[source]]` entries in
+`.project-setup/sources.toml`.
+
+**Three CLI commands handle the full install flow — all exit before the pipeline
+runs, so they work even if the project has not been set up yet:**
+
+```
+# 1. Discover what modules a catalog offers
+uv run <root>/runner/cli.py --list-catalog
+
+# 2a. Add a module source by raw locator (local path or git URL/shorthand)
+uv run <root>/runner/cli.py --add-module <locator> --project-dir <dir>
+uv run <root>/runner/cli.py --add-module owner/repo/subdir#v1.2.0 --project-dir <dir>
+
+# 2b. Add a module from a configured catalog by name
+uv run <root>/runner/cli.py --add-module-from-catalog <name> --project-dir <dir>
+
+# 3. Enable the module on the next run (add its id to the answers file)
+#    Then run the normal pipeline:
+uv run <root>/runner/cli.py --project-dir <dir> --answers answers.json
+```
+
+**Step-by-step:**
+
+1. **Discover** — run `--list-catalog` to see what modules a configured catalog
+   provides (name, category, locator, description). Configure a catalog via the
+   `PROJECT_SETUP_CATALOG_URL` env var or `~/.config/project-setup/config.toml`:
+   ```toml
+   [catalog]
+   urls = ["https://example.com/catalog.json"]
+   ```
+
+2. **Add** — run `--add-module <locator>` or `--add-module-from-catalog <name>`.
+   The command: fetches/validates the source (verifying ≥1 valid module exists),
+   then appends a `[[source]]` entry to `.project-setup/sources.toml`. Existing
+   entries are preserved; duplicates are skipped.
+   - `--ref <ref>` overrides the ref embedded in the locator.
+   - `--subdir <path>` overrides the subdir embedded in the locator.
+   - For git sources the locator must be pinned to a tag or SHA — unpinned sources
+     are rejected by the `ORG_SOURCE_UNPINNED` gate on the next run.
+
+3. **Enable** — adding a source makes its modules *available* but not *enabled*.
+   Add the module id(s) to the `enabled` list in your answers file:
+   ```json
+   {
+     "enabled": ["my-addon-module", "lang-python", ...],
+     ...
+   }
+   ```
+   Then run the pipeline normally (`--answers answers.json`). The runner's fetch +
+   discover pipeline picks up the registered source automatically.
+
+**What `--add-module` does NOT do:** it does not run or execute the module; it does
+not auto-enable it; it does not modify `answers.toml`. It only writes the source
+locator to `sources.toml` so the runner can find the module on the next run.
+
+**Locator forms supported:**
+- `owner/repo` — GitHub shorthand (resolves to `github.com/owner/repo`)
+- `owner/repo/subdir#v1.2.0` — shorthand with subdir and pinned ref
+- `https://github.com/owner/repo#v1.2.0` — full HTTPS URL
+- `git@github.com:owner/repo` — SSH URL
+- `/path/to/local/modules` — local filesystem path (no ref needed)
+
 ## Modes (the runner detects this; you do not choose it)
 
 - **Init** (no `.project-setup/sources.toml`): conduct the interview, then write
