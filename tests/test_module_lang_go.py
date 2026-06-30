@@ -163,17 +163,28 @@ def test_happy_path_creates_golangci_yml(tmp_path):
 
 
 def test_happy_path_creates_cmd_main_go(tmp_path):
-    """Happy path: cmd/main.go is created (write step)."""
+    """Happy path: cmd/<binary>/main.go is created (write step).
+
+    The entrypoint must live one level below cmd/ (cmd/<binary>/main.go), NOT at
+    cmd/main.go, so `go build ./...` names the binary <binary> instead of
+    colliding with the cmd/ directory.
+    """
     project = tmp_path / "mycli"
     project.mkdir()
     stub_dir = _stub_go_and_git(tmp_path)
+    # No project_name answer here → binary name derives from the module path's
+    # last segment ("mycli").
     plan = _frozen_plan(tmp_path, module_path="github.com/example/mycli")
 
     proc = _run(project, plan, stub_dir)
     assert proc.returncode == 0, proc.stderr
 
-    main_go = project / "cmd" / "main.go"
-    assert main_go.exists(), "cmd/main.go not created"
+    main_go = project / "cmd" / "mycli" / "main.go"
+    assert main_go.exists(), "cmd/mycli/main.go not created"
+    # Regression guard: the flat cmd/main.go layout must NOT be produced.
+    assert not (project / "cmd" / "main.go").exists(), (
+        "flat cmd/main.go layout regressed — go build ./... will collide with cmd/"
+    )
     content = main_go.read_text()
     assert "package main" in content
     assert "fmt.Println" in content
@@ -395,7 +406,8 @@ def _frozen_plan_with_name(tmp: Path, project_name: str, module_path: str = "") 
 
 
 def test_project_name_answer_used_in_cmd_main_go(tmp_path):
-    """BUG A+B: project_name answer drives the package name in cmd/main.go."""
+    """BUG A+B: project_name answer drives both the cmd/<binary>/ path and the
+    package name printed in main.go."""
     project = tmp_path / "some-directory"
     project.mkdir()
     stub_dir = _stub_go_and_git(tmp_path)
@@ -407,15 +419,19 @@ def test_project_name_answer_used_in_cmd_main_go(tmp_path):
     proc = _run(project, plan, stub_dir)
     assert proc.returncode == 0, proc.stderr
 
-    main_go = project / "cmd" / "main.go"
-    assert main_go.exists(), "cmd/main.go not created"
+    # Binary dir name derives from project_name ("my-service"), NOT the dir name.
+    main_go = project / "cmd" / "my-service" / "main.go"
+    assert main_go.exists(), "cmd/my-service/main.go not created"
+    assert not (project / "cmd" / "some-directory" / "main.go").exists(), (
+        "dir name leaked into the cmd/<binary>/ path"
+    )
     content = main_go.read_text()
     # The Println call must use project_name ("my-service"), not the dir name ("some-directory")
     assert "my-service" in content, (
-        f"Expected 'my-service' in cmd/main.go, got: {content!r}"
+        f"Expected 'my-service' in cmd/<binary>/main.go, got: {content!r}"
     )
     assert "some-directory" not in content, (
-        f"Dir name leaked into cmd/main.go: {content!r}"
+        f"Dir name leaked into cmd/<binary>/main.go: {content!r}"
     )
 
 
@@ -449,3 +465,57 @@ def test_manifest_has_project_name_input():
     )
     pn_input = next(inp for inp in mani.inputs if inp.key == "project_name")
     assert pn_input.required is True, "project_name input must be required=true"
+
+
+def test_binary_name_sanitizes_unsafe_project_name(tmp_path):
+    """A project_name with spaces/punctuation must yield a safe cmd/<binary>/ path
+    (lowercased, non-alphanumerics collapsed to '-'), never breaking the build."""
+    project = tmp_path / "raw"
+    project.mkdir()
+    stub_dir = _stub_go_and_git(tmp_path)
+    (project / ".gitignore").write_text("# base\n")
+    plan = _frozen_plan_with_name(
+        tmp_path, project_name="My Service!!", module_path="github.com/acme/my-service"
+    )
+
+    proc = _run(project, plan, stub_dir)
+    assert proc.returncode == 0, proc.stderr
+
+    # "My Service!!" → "my-service"
+    main_go = project / "cmd" / "my-service" / "main.go"
+    assert main_go.exists(), (
+        f"expected cmd/my-service/main.go; cmd/ tree: "
+        f"{[str(p.relative_to(project)) for p in (project / 'cmd').rglob('*')]}"
+    )
+    # No spaces or '!' must reach the on-disk path.
+    cmd_children = [p.name for p in (project / "cmd").iterdir() if p.is_dir()]
+    assert cmd_children == ["my-service"], f"unexpected cmd/ children: {cmd_children}"
+
+
+def test_binary_name_helper_unit():
+    """Unit-test _binary_name directly across edge cases."""
+    module = _load_lang_go_module()
+    bn = module._binary_name
+    assert bn("atlas", "github.com/acme/atlas") == "atlas"
+    assert bn("My Service!!", "x") == "my-service"
+    assert bn("", "github.com/acme/derived-name") == "derived-name"
+    assert bn("", "") == "app"          # nothing to go on → safe default
+    assert bn("---", "") == "app"        # collapses to empty → safe default
+    assert bn("CamelCase", "x") == "camelcase"
+
+
+def _load_lang_go_module():
+    """Import the lang-go module.py so its helpers can be unit-tested.
+
+    The runner dir must be on sys.path first so the module's `import sdk` fast
+    path resolves during import-time, matching how the executor loads it.
+    """
+    if str(_RUNNER) not in sys.path:
+        sys.path.insert(0, str(_RUNNER))
+    spec = importlib.util.spec_from_file_location(
+        "lang_go_module", _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    )
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
