@@ -360,3 +360,92 @@ def test_inspect_writes_nothing(tmp_path):
     # .golangci.yml must not exist (write-if-absent, inspect=True)
     assert not (project / ".golangci.yml").exists()
     assert not (project / "cmd").exists()
+
+
+# ── BUG A+B: project_name answer ─────────────────────────────────────────────
+
+def _frozen_plan_with_name(tmp: Path, project_name: str, module_path: str = "") -> Path:
+    """Build a frozen plan that includes a project_name answer."""
+    plan = {
+        "schema_version": 1,
+        "mode": "init",
+        "order": ["lang-go"],
+        "modules": {
+            "lang-go": {
+                "id": "lang-go",
+                "version": "1.0.0",
+                "reconcile": True,
+                "module_rel_root": _MODULE_REL,
+                "answers": {
+                    "project_name": project_name,
+                    "module_path": module_path,
+                    "app_kind": "",
+                },
+                "steps": [
+                    {"id": "write", "kind": "python"},
+                    {"id": "run-generator", "kind": "gate", "hardness": "soft", "skip_flag": "no-external-generators"},
+                    {"id": "scaffold", "kind": "python"},
+                ],
+            }
+        },
+    }
+    p = tmp / "plan.json"
+    p.write_text(json.dumps(plan))
+    return p
+
+
+def test_project_name_answer_used_in_cmd_main_go(tmp_path):
+    """BUG A+B: project_name answer drives the package name in cmd/main.go."""
+    project = tmp_path / "some-directory"
+    project.mkdir()
+    stub_dir = _stub_go_and_git(tmp_path)
+    (project / ".gitignore").write_text("# base\n")
+    plan = _frozen_plan_with_name(
+        tmp_path, project_name="my-service", module_path="github.com/acme/my-service"
+    )
+
+    proc = _run(project, plan, stub_dir)
+    assert proc.returncode == 0, proc.stderr
+
+    main_go = project / "cmd" / "main.go"
+    assert main_go.exists(), "cmd/main.go not created"
+    content = main_go.read_text()
+    # The Println call must use project_name ("my-service"), not the dir name ("some-directory")
+    assert "my-service" in content, (
+        f"Expected 'my-service' in cmd/main.go, got: {content!r}"
+    )
+    assert "some-directory" not in content, (
+        f"Dir name leaked into cmd/main.go: {content!r}"
+    )
+
+
+def test_project_name_answer_fallback_module_path(tmp_path):
+    """BUG A+B: when module_path is empty and no git remote, fallback uses project_name answer."""
+    project = tmp_path / "tmpdir"
+    project.mkdir()
+    # Stub git to return non-zero (no remote)
+    stub_dir = _stub_go_and_git(tmp_path, remote_url="")
+    plan = _frozen_plan_with_name(tmp_path, project_name="real-project-name", module_path="")
+
+    proc = _run(project, plan, stub_dir)
+    assert proc.returncode == 0, proc.stderr
+    result = json.loads(proc.stdout)
+    # The fallback warning must use the answer name, not the directory name ("tmpdir")
+    assert any("real-project-name" in w for w in result["warnings"]), (
+        f"Expected fallback to use project_name answer; warnings: {result['warnings']}"
+    )
+    assert not any("tmpdir" in w for w in result["warnings"]), (
+        f"Dir name leaked into fallback warning: {result['warnings']}"
+    )
+
+
+def test_manifest_has_project_name_input():
+    """manifest must declare a project_name input (required=true)."""
+    manifest = _load("manifest")
+    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    input_keys = {inp.key for inp in mani.inputs}
+    assert "project_name" in input_keys, (
+        f"project_name input missing from lang-go module.toml; keys: {input_keys}"
+    )
+    pn_input = next(inp for inp in mani.inputs if inp.key == "project_name")
+    assert pn_input.required is True, "project_name input must be required=true"

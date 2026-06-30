@@ -63,8 +63,15 @@ def _load_sdk():
     return mod
 
 
-def _derive_module_path(project_dir: Path, warnings: list[str]) -> str:
-    """Derive a Go module path from git remote, mirroring legacy setup-go.sh lines 30-38."""
+def _derive_module_path(
+    project_dir: Path, warnings: list[str], *, project_name: str = ""
+) -> str:
+    """Derive a Go module path from git remote, mirroring legacy setup-go.sh lines 30-38.
+
+    The optional *project_name* keyword argument is used for the fallback path
+    (``example.com/<project_name>``) so the fallback uses the answer-driven name
+    rather than the raw directory name.
+    """
     git = shutil.which("git")
     if git:
         try:
@@ -86,7 +93,8 @@ def _derive_module_path(project_dir: Path, warnings: list[str]) -> str:
                 return module
         except Exception:  # noqa: BLE001
             pass
-    fallback = f"example.com/{project_dir.name}"
+    name_part = project_name.strip() if project_name.strip() else project_dir.name
+    fallback = f"example.com/{name_part}"
     warnings.append(f"WARN: No git remote found — using module path '{fallback}'")
     return fallback
 
@@ -118,12 +126,17 @@ def _do_write(sdk, inputs, args) -> int:
     diffs = []
     files_written: list[str] = []
 
+    # Package identity: prefer the explicit project_name answer; fall back to the
+    # directory name only when absent (preserves existing behaviour for answer-less
+    # runs). The fallback module path also uses project_name so both sides agree.
+    raw_name = inputs.get_str("project_name", default="") or project_dir.name
+    project_name = raw_name.strip()
+
     # ── 1. Derive module path (needed for cmd/main.go project_name) ─────────── #
     if not module_path:
-        module_path = _derive_module_path(project_dir, warnings)
+        module_path = _derive_module_path(project_dir, warnings, project_name=project_name)
 
     # ── 2. Standard Go layout ──────────────────────────────────────────────── #
-    project_name = project_dir.name
     main_go_rel = "cmd/main.go"
     main_go_body = f'package main\n\nimport "fmt"\n\nfunc main() {{\n\tfmt.Println("{project_name}")\n}}\n'
     if not args.inspect:
@@ -229,7 +242,8 @@ def _do_scaffold(sdk, inputs, args) -> int:
 
     # ── 1. Derive module path (must match what write step derived) ─────────── #
     if not module_path:
-        module_path = _derive_module_path(project_dir, warnings)
+        raw_name = inputs.get_str("project_name", default="") or project_dir.name
+        module_path = _derive_module_path(project_dir, warnings, project_name=raw_name.strip())
 
     # ── 2. go mod init ─────────────────────────────────────────────────────── #
     go_mod = project_dir / "go.mod"
