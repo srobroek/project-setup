@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/srobroek/project-setup/compare/project-setup-v0.5.1...project-setup-v0.5.2) (2026-06-30)
+
+
+### Bug Fixes
+
+* fill AGENTS.md, language-aware justfile, optional initial git commit ([b884adc](https://github.com/srobroek/project-setup/commit/b884adcdd473f882d04fa27ee161f3c839bb638f))
+
 ## [0.5.1](https://github.com/srobroek/project-setup/compare/project-setup-v0.5.0...project-setup-v0.5.1) (2026-06-30)
 
 
