@@ -7,7 +7,7 @@ author = "Sjors Robroek"
 [module]
 id = "readme-draft"
 name = "README draft"
-version = "1.0.0"  # x-release-please-version
+version = "1.0.1"  # x-release-please-version
 description = "Draft a project README.md from frozen scaffold facts (project name, org, layout, language, framework, resolved stack, license). Agent drafts; gate shows the draft; python step writes write-once. Never clobbers a hand-edited README."
 default_enabled = false
 reconcile = false
