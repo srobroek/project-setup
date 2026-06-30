@@ -8,6 +8,14 @@
 * deterministic scaffolding — correct package identity, installable manifests, valid CI, enforced interview ([fed956f](https://github.com/srobroek/project-setup/commit/fed956f22f978804b5f4ffece839c85e4e8b9324))
 * **package-add:** add [build-system] to Python manifest; TS workspace edit writes valid JSON ([6e85ff3](https://github.com/srobroek/project-setup/commit/6e85ff3e92ada77d4ee7883199a22768b4ffdc37))
 
+## [1.1.2](https://github.com/srobroek/project-setup/compare/package-add-v1.1.1...package-add-v1.1.2) (2026-06-30)
+
+
+### Bug Fixes
+
+* deterministic scaffolding — correct package identity, installable manifests, valid CI, enforced interview ([fed956f](https://github.com/srobroek/project-setup/commit/fed956f22f978804b5f4ffece839c85e4e8b9324))
+* **package-add:** add [build-system] to Python manifest; TS workspace edit writes valid JSON ([6e85ff3](https://github.com/srobroek/project-setup/commit/6e85ff3e92ada77d4ee7883199a22768b4ffdc37))
+
 ## [1.1.1](https://github.com/srobroek/project-setup/compare/package-add-v1.1.0...package-add-v1.1.1) (2026-06-30)
 
 
