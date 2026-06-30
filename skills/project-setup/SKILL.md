@@ -172,23 +172,34 @@ uv run <root>/runner/cli.py --project-dir <dir> --answers answers.json
    entries are preserved; duplicates are skipped.
    - `--ref <ref>` overrides the ref embedded in the locator.
    - `--subdir <path>` overrides the subdir embedded in the locator.
+   - `--enable` also writes the discovered module id(s) into the committed
+     `.project-setup/answers.toml` `[modules].enabled` list (see step 3 below).
    - For git sources the locator must be pinned to a tag or SHA — unpinned sources
      are rejected by the `ORG_SOURCE_UNPINNED` gate on the next run.
 
-3. **Enable** — adding a source makes its modules *available* but not *enabled*.
-   Add the module id(s) to the `enabled` list in your answers file:
-   ```json
-   {
-     "enabled": ["my-addon-module", "lang-python", ...],
-     ...
-   }
-   ```
-   Then run the pipeline normally (`--answers answers.json`). The runner's fetch +
-   discover pipeline picks up the registered source automatically.
+3. **Enable** — writing `sources.toml` flips the project to **reproduce mode**.
+   In reproduce mode the enabled set is read from the **committed**
+   `.project-setup/answers.toml` `[modules].enabled` — the `--answers` file's
+   `enabled` list is ignored. To enable the module(s):
 
-**What `--add-module` does NOT do:** it does not run or execute the module; it does
-not auto-enable it; it does not modify `answers.toml`. It only writes the source
-locator to `sources.toml` so the runner can find the module on the next run.
+   **Option A (recommended):** pass `--enable` with `--add-module`:
+   ```
+   project-setup --add-module <locator> --enable --project-dir <dir>
+   ```
+   This registers the source AND adds the id(s) to `answers.toml` in one step.
+
+   **Option B:** edit `.project-setup/answers.toml` directly:
+   ```toml
+   [modules]
+   enabled = ["my-addon-module", "lang-python", ...]
+   ```
+
+   Then run the pipeline normally. The runner's fetch + discover pipeline picks
+   up the registered source automatically.
+
+**What `--add-module` does NOT do:** it does not run or execute the module. Without
+`--enable` it does not modify `answers.toml`. It only writes the source locator to
+`sources.toml` so the runner can find the module on the next run.
 
 **Locator forms supported:**
 - `owner/repo` — GitHub shorthand (resolves to `github.com/owner/repo`)

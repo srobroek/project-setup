@@ -188,6 +188,7 @@ def write_sources_toml(
     project_dir: Path,
     sources: list[dict[str, Any]],
     skill_version: str = "",
+    meta: dict[str, Any] | None = None,
 ) -> Path:
     """Write ``.project-setup/sources.toml``.
 
@@ -197,10 +198,16 @@ def write_sources_toml(
         The project root directory.
     sources:
         List of source records, each with at least ``locator`` and optional
-        ``ref`` and ``subdir`` keys.
+        ``ref``, ``subdir``, and any other keys (unknown keys are preserved
+        on round-trip so --add-module does not drop out-of-schema fields).
     skill_version:
         Advisory version string embedded in ``[meta]`` (not enforced on
-        re-run; used only for drift warning).
+        re-run; used only for drift warning). If *meta* is also provided,
+        a non-empty *skill_version* overrides ``meta["skill_version"]``.
+    meta:
+        Full ``[meta]`` dict to write.  Any keys present here are written
+        through verbatim; ``skill_version`` is merged in if non-empty.
+        Pass this to preserve unknown ``[meta]`` keys on round-trip.
 
     Returns
     -------
@@ -211,16 +218,31 @@ def write_sources_toml(
     dest = psd / "sources.toml"
 
     data: dict[str, Any] = {}
+    # Build the [meta] table: start from the caller-supplied dict (if any),
+    # then overlay skill_version if provided.  This preserves unknown meta
+    # keys (e.g. "custom_note") on round-trip.
+    effective_meta: dict[str, Any] = dict(meta) if meta else {}
     if skill_version:
-        data["meta"] = {"skill_version": skill_version}
+        effective_meta["skill_version"] = skill_version
+    if effective_meta:
+        data["meta"] = effective_meta
+
     if sources:
         data["source"] = []
         for src in sources:
-            record: dict[str, Any] = {"locator": src.get("locator", "")}
+            # Preserve all keys from the source record — start with a copy so
+            # unknown fields round-trip unchanged — then ensure the canonical
+            # keys (locator, ref, subdir) are in the right order.
+            record: dict[str, Any] = {}
+            record["locator"] = src.get("locator", "")
             if src.get("ref"):
                 record["ref"] = src["ref"]
             if src.get("subdir"):
                 record["subdir"] = src["subdir"]
+            # Carry through any extra keys (preserves out-of-schema fields).
+            for k, v in src.items():
+                if k not in record:
+                    record[k] = v
             data["source"].append(record)
 
     _write_toml(dest, data)

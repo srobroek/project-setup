@@ -387,3 +387,103 @@ class TestSuccessfulGitFetchLocalBareRepo:
         result = fetch_source(loc)
         assert result.ok, result.skipped_reason
         assert (result.root_path / "M.txt").read_text() == "sub\n"
+
+
+# ---------------------------------------------------------------------------
+# Regression: top-level `import fetch` must not raise on git locators
+# ---------------------------------------------------------------------------
+# The CLI does: sys.path += [runner, runner/sources]; import fetch
+# Previously _clone_or_update did `from .locator import cache_key` (relative
+# import), which raised "attempted relative import with no known parent package"
+# when fetch was loaded top-level.  The error was swallowed by fetch_source's
+# broad except, silently returning ok=False for ALL git locators.
+# This test replicates the CLI's exact import path and asserts ok=True.
+
+class TestFetchTopLevelImportRegression:
+    """Verify that importing fetch the way cli.py does works for git locators."""
+
+    def _make_bare_remote(self, tmp_path):
+        """Identical helper to TestSuccessfulGitFetchLocalBareRepo._make_bare_remote."""
+        import shutil
+        import subprocess
+
+        if shutil.which("git") is None:
+            return None
+        work = tmp_path / "work"
+        work.mkdir()
+        env = {
+            **os.environ,
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_SYSTEM": os.devnull,
+        }
+
+        def git(*args, cwd=work):
+            subprocess.run(["git", "-c", "commit.gpgsign=false", *args],
+                           cwd=str(cwd), check=True, capture_output=True,
+                           text=True, env=env)
+
+        git("init", "-q")
+        git("config", "user.email", "t@example.com")
+        git("config", "user.name", "Test")
+        (work / "MARKER.txt").write_text("toplevel import test\n")
+        git("add", "MARKER.txt")
+        git("commit", "-q", "-m", "initial")
+        bare = tmp_path / "remote.git"
+        subprocess.run(["git", "clone", "-q", "--bare", str(work), str(bare)],
+                       check=True, capture_output=True, text=True, env=env)
+        return bare
+
+    def test_git_locator_ok_when_fetch_loaded_toplevel(self, tmp_path, monkeypatch):
+        """fetch loaded top-level (as cli.py does) must return ok=True for git locators.
+
+        The KEY is loading via importlib with both runner AND runner/sources on
+        sys.path but WITHOUT registering it as 'sources.fetch' — this is exactly
+        how the CLI bootstraps, and previously triggered the relative-import bug.
+        """
+        import importlib.util
+        import shutil
+        import pytest
+
+        bare = self._make_bare_remote(tmp_path)
+        if bare is None:
+            pytest.skip("git not available")
+
+        monkeypatch.setenv("PROJECT_SETUP_CACHE_DIR", str(tmp_path / "cache"))
+
+        # Replicate cli.py's sys.path seam: runner dir + runner/sources both on path.
+        runner_dir = _RUNNER
+        sources_dir = _SOURCES
+        for p in (str(runner_dir), str(sources_dir)):
+            if p not in sys.path:
+                sys.path.insert(0, p)
+
+        # Load fetch as a plain top-level "fetch" module (NOT as 'sources.fetch').
+        # Register it as "fetch" BEFORE exec_module so that dataclasses defined
+        # inside (like FetchResult) get __module__ = "fetch" which remains in
+        # sys.modules for the duration of the test.
+        fetch_path = sources_dir / "fetch.py"
+        spec = importlib.util.spec_from_file_location("fetch", fetch_path)
+        assert spec and spec.loader
+        fetch_toplevel = importlib.util.module_from_spec(spec)
+        old_fetch = sys.modules.get("fetch")
+        sys.modules["fetch"] = fetch_toplevel
+        try:
+            spec.loader.exec_module(fetch_toplevel)
+            # Now call fetch_source with a git locator via the top-level module.
+            locator_mod_local = sys.modules.get("locator") or sys.modules.get("sources.locator")
+            assert locator_mod_local is not None, "locator module not in sys.modules"
+            Locator = locator_mod_local.Locator
+            loc = Locator(kind="git", origin=str(bare), subdir="", ref="HEAD")
+            result = fetch_toplevel.fetch_source(loc)
+            assert result.ok is True, (
+                f"fetch_source returned ok=False when loaded top-level: "
+                f"{result.skipped_reason!r} — this indicates the relative-import bug regressed"
+            )
+            assert result.root_path is not None
+            assert (result.root_path / "MARKER.txt").read_text() == "toplevel import test\n"
+        finally:
+            # Restore previous state so other tests still find sources.fetch.
+            if old_fetch is None:
+                sys.modules.pop("fetch", None)
+            else:
+                sys.modules["fetch"] = old_fetch
