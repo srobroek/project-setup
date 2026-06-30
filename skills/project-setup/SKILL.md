@@ -563,6 +563,26 @@ or abort.
 - **You STOP here and hand off.** Print what was scaffolded + the user's next steps;
   do not continue into authoring application code, tests, or migrations (see "Scope").
 
+## Module input reference (agent-supplied extras)
+
+Three inputs that are optional but worth supplying when the information is known:
+
+| module | input key | type | what it does |
+|---|---|---|---|
+| `agents-md` | `description` | string | One-line project description; fills the `AGENTS.md` PROJECT DESCRIPTION placeholder instead of leaving a TODO comment. Supply the same description given to `core-identity`. |
+| `justfile-write` | `language` | string | Language id matching the enabled `lang-*` module (`python`, `go`, `rust`, `ts`). When supplied, justfile-write renders idiomatic recipe bodies (`uv run pytest`, `go test ./...`, etc.) instead of fail-loud stubs. Empty string keeps the stubs (safe default). |
+| `git-init` | `initial_commit` | bool | When `true`, creates an initial scaffold commit (`git add -A && git commit`) after all other modules have written their files. Defaults `false` (opt-in). Non-fatal if git is unavailable — emits a warning and continues. |
+
+Example additions to your answers file:
+
+```json
+{
+  "agents-md.description": "A fast REST API for widget management",
+  "justfile-write.language": "python",
+  "git-init.initial_commit": true
+}
+```
+
 ## Checking validity
 
 - Per-module functional tests (`test_*.py`) assert that on-disk state matches the

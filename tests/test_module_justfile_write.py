@@ -63,7 +63,7 @@ def _load(name: str):
     return mod
 
 
-def _frozen_plan(tmp: Path, use_just: bool = True) -> Path:
+def _frozen_plan(tmp: Path, use_just: bool = True, language: str = "") -> Path:
     plan = {
         "schema_version": 1,
         "mode": "init",
@@ -74,7 +74,7 @@ def _frozen_plan(tmp: Path, use_just: bool = True) -> Path:
                 "version": "1.0.0",
                 "reconcile": False,
                 "module_rel_root": _MODULE_REL,
-                "answers": {"use_just": use_just},
+                "answers": {"use_just": use_just, "language": language},
                 "steps": [{"id": "write", "kind": "python"}],
             }
         },
@@ -180,3 +180,121 @@ def test_idempotent_second_run_skips(tmp_path):
     assert result["files_written"] == []
     # Content unchanged
     assert (project / "justfile").read_text() == _EXPECTED_JUSTFILE
+
+
+# --------------------------------------------------------------------------- #
+# Task B — language-aware recipes                                              #
+# --------------------------------------------------------------------------- #
+
+def test_manifest_has_language_input():
+    """module.toml must declare a 'language' input with type=string, default=""."""
+    manifest = _load("manifest")
+    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    assert not mani.errors, mani.errors
+    lang_inputs = [i for i in mani.inputs if i.key == "language"]
+    assert lang_inputs, "No 'language' input found in module.toml"
+    li = lang_inputs[0]
+    assert li.type.value == "string", f"Expected type=string, got {li.type}"
+    assert li.required is False
+    assert li.default == "" or li.default is None or li.default == ""
+
+
+def test_python_test_recipe_uses_uv_run_pytest(tmp_path):
+    """language=python: test: recipe must contain 'uv run pytest', not the error stub."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    plan = _frozen_plan(tmp_path, language="python")
+    proc = _run(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    content = (project / "justfile").read_text()
+    assert "uv run pytest" in content
+    assert "ERROR: no test command configured" not in content
+
+
+def test_python_build_recipe_uses_uv_build(tmp_path):
+    """language=python: build: recipe must contain 'uv build', not the error stub."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    plan = _frozen_plan(tmp_path, language="python")
+    proc = _run(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    content = (project / "justfile").read_text()
+    assert "uv build" in content
+    assert "ERROR: no build command configured" not in content
+
+
+def test_python_lint_preserved(tmp_path):
+    """language=python: lint: must still use pre-commit run --all-files."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    plan = _frozen_plan(tmp_path, language="python")
+    proc = _run(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    content = (project / "justfile").read_text()
+    assert "pre-commit run --all-files" in content
+
+
+def test_python_dev_is_not_silent_pass(tmp_path):
+    """language=python: dev: must NOT be a silent exit-0 echo (green-theater guard)."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    plan = _frozen_plan(tmp_path, language="python")
+    proc = _run(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    content = (project / "justfile").read_text()
+    # dev recipe body must contain exit 1 (fail-loud) — not a bare TODO echo-and-pass
+    dev_section = content.split("# Start dev server\ndev:\n")
+    assert len(dev_section) == 2, "dev: section not found"
+    dev_body = dev_section[1].split("\n\n")[0]
+    assert "exit 1" in dev_body or "exit 1" in dev_body, (
+        f"dev recipe must fail loud, got: {dev_body!r}"
+    )
+
+
+def test_empty_language_keeps_fail_loud_stubs(tmp_path):
+    """language='': test/build/dev must all use the error-exit stubs (green-theater guard)."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    plan = _frozen_plan(tmp_path, language="")
+    proc = _run(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    content = (project / "justfile").read_text()
+    assert "ERROR: no test command configured" in content
+    assert "ERROR: no build command configured" in content
+    assert "ERROR: no dev command configured" in content
+
+
+def test_go_test_recipe_uses_go_test(tmp_path):
+    """language=go: test: recipe must contain 'go test ./...'."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    plan = _frozen_plan(tmp_path, language="go")
+    proc = _run(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    content = (project / "justfile").read_text()
+    assert "go test ./..." in content
+    assert "ERROR: no test command configured" not in content
+
+
+def test_rust_test_recipe_uses_cargo_test(tmp_path):
+    """language=rust: test: recipe must contain 'cargo test'."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    plan = _frozen_plan(tmp_path, language="rust")
+    proc = _run(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    content = (project / "justfile").read_text()
+    assert "cargo test" in content
+    assert "ERROR: no test command configured" not in content
+
+
+def test_unknown_language_keeps_fail_loud_stubs(tmp_path):
+    """An unknown language string must fall back to the fail-loud stubs."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    plan = _frozen_plan(tmp_path, language="cobol")
+    proc = _run(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    content = (project / "justfile").read_text()
+    assert "ERROR: no test command configured" in content
+    assert "ERROR: no build command configured" in content

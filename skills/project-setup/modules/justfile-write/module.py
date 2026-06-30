@@ -23,6 +23,8 @@ import sys
 from pathlib import Path
 
 # Verbatim justfile body from project-setup.sh Step 8 (lines 619–641).
+# Used when language is empty/unknown — fail-loud stubs so CI is never
+# silently green for unconfigured commands.
 _JUSTFILE = """\
 default:
     @just --list
@@ -47,6 +49,78 @@ dev:
 clean:
     @echo "TODO: configure clean command"
 """
+
+# Language-specific recipe bodies.  Values that are NOT known → fail-loud stub.
+# Rules:
+#   - test/build: real idiomatic command when known, else fail-loud stub.
+#   - dev: fail-loud stub unless the command is unambiguous (no entrypoint needed).
+#   - lint: pre-commit run --all-files is universal; kept for all languages.
+#   - clean: always a hint-stub (no-op cost; build artefact dirs vary per project).
+#   - NEVER emit an exit-0 "TODO" echo for test or build.
+_LANG_RECIPES: dict[str, dict[str, str]] = {
+    "python": {
+        "test": "uv run pytest",
+        "build": "uv build",
+        "dev": (
+            "@echo \"INFO: configure a dev command for your project "
+            "(e.g. uv run uvicorn app.main:app --reload)\" && exit 1"
+        ),
+    },
+    "go": {
+        "test": "go test ./...",
+        "build": "go build ./...",
+        "dev": "@echo \"INFO: configure a dev command (e.g. go run ./cmd/...)\" && exit 1",
+    },
+    "rust": {
+        "test": "cargo test",
+        "build": "cargo build --release",
+        "dev": "@echo \"INFO: configure a dev command (e.g. cargo run)\" && exit 1",
+    },
+    "ts": {
+        "test": "npm test",
+        "build": "@echo \"ERROR: no build command configured — edit this justfile to add one\" && exit 1",
+        "dev": "@echo \"INFO: configure a dev command (e.g. npm run dev)\" && exit 1",
+    },
+}
+
+
+def _render_justfile(language: str) -> str:
+    """Return a justfile body with recipes appropriate for *language*.
+
+    When *language* is empty or not in the known set the canonical fail-loud
+    stub body is returned unchanged.  When it IS known, the test/build/dev
+    recipe bodies are swapped to idiomatic commands for that language; lint and
+    clean are unchanged.
+    """
+    lang = language.strip().lower()
+    recipes = _LANG_RECIPES.get(lang)
+    if recipes is None:
+        return _JUSTFILE
+
+    return (
+        "default:\n"
+        "    @just --list\n"
+        "\n"
+        "# Run tests\n"
+        "test:\n"
+        f"    {recipes['test']}\n"
+        "\n"
+        "# Lint and format\n"
+        "lint:\n"
+        "    pre-commit run --all-files\n"
+        "\n"
+        "# Build\n"
+        "build:\n"
+        f"    {recipes['build']}\n"
+        "\n"
+        "# Start dev server\n"
+        "dev:\n"
+        f"    {recipes['dev']}\n"
+        "\n"
+        "# Clean build artifacts\n"
+        "clean:\n"
+        "    @echo \"TODO: configure clean command\"\n"
+    )
 
 
 def _load_sdk():
@@ -97,9 +171,12 @@ def main() -> int:
         sdk.emit_result(result)
         return 0
 
+    language = inputs.get_str("language", default="")
+    body = _render_justfile(language)
+
     diff = sdk.idempotent_write(
         "justfile",
-        _JUSTFILE,
+        body,
         reconcile=False,  # write-if-absent; never overwrite on re-run
         inspect=args.inspect,
     )

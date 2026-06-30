@@ -38,7 +38,7 @@ def _load(name: str):
     return mod
 
 
-def _frozen_plan(tmp: Path, *, init_git: bool = True) -> Path:
+def _frozen_plan(tmp: Path, *, init_git: bool = True, initial_commit: bool = False) -> Path:
     plan = {
         "schema_version": 1,
         "mode": "init",
@@ -49,8 +49,11 @@ def _frozen_plan(tmp: Path, *, init_git: bool = True) -> Path:
                 "version": "1.0.0",
                 "reconcile": False,
                 "module_rel_root": _MODULE_REL,
-                "answers": {"init_git": init_git},
-                "steps": [{"id": "init", "kind": "python"}],
+                "answers": {"init_git": init_git, "initial_commit": initial_commit},
+                "steps": [
+                    {"id": "init", "kind": "python"},
+                    {"id": "commit", "kind": "python"},
+                ],
             }
         },
     }
@@ -65,6 +68,18 @@ def _run(project: Path, plan: Path, *, inspect: bool = False) -> subprocess.Comp
     if inspect:
         cmd.append("--inspect")
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
+    return subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(project))
+
+
+def _run_commit(project: Path, plan: Path, *, inspect: bool = False, extra_env: dict | None = None) -> subprocess.CompletedProcess:
+    """Run the 'commit' step of the git-init module."""
+    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "commit"]
+    if inspect:
+        cmd.append("--inspect")
+    env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
+    if extra_env:
+        env.update(extra_env)
     return subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(project))
 
 
@@ -215,3 +230,120 @@ def test_codex_preflight_readonly_emits_error_result(tmp_path):
         )
     finally:
         os.chmod(str(git_dir), original_mode)
+
+
+# --------------------------------------------------------------------------- #
+# Task C — manifest + commit step                                              #
+# --------------------------------------------------------------------------- #
+
+def test_manifest_has_commit_step_and_initial_commit_input():
+    """module.toml must declare both 'init' and 'commit' steps and 'initial_commit' input."""
+    manifest = _load("manifest")
+    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    assert not mani.errors, mani.errors
+    step_ids = [s.id for s in mani.steps]
+    assert "init" in step_ids, f"Missing 'init' step: {step_ids}"
+    assert "commit" in step_ids, f"Missing 'commit' step: {step_ids}"
+    # commit must come AFTER init
+    assert step_ids.index("commit") > step_ids.index("init"), (
+        f"'commit' must appear after 'init' in steps: {step_ids}"
+    )
+    # initial_commit input declared
+    input_keys = [i.key for i in mani.inputs]
+    assert "initial_commit" in input_keys, f"Missing 'initial_commit' input: {input_keys}"
+    ic_input = next(i for i in mani.inputs if i.key == "initial_commit")
+    assert ic_input.required is False
+    assert ic_input.default is False or ic_input.default == False  # noqa: E712
+
+
+def test_manifest_order_after_covers_common_modules():
+    """git-init's order.after must list common bundled modules so it runs last."""
+    manifest = _load("manifest")
+    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    assert not mani.errors, mani.errors
+    after = mani.order.get("after", [])
+    # Must cover the most common file-writing modules.
+    for expected in ("dirs-scaffold", "license-write", "lang-python", "readme-draft"):
+        assert expected in after, (
+            f"git-init order.after should include '{expected}' to run last; got: {after}"
+        )
+
+
+def test_commit_step_disabled_by_default(tmp_path):
+    """initial_commit=false (default): commit step exits ok, no git log entries."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    # Initialise a real git repo first
+    subprocess.run(["git", "init"], cwd=str(project), capture_output=True)
+
+    plan = _frozen_plan(tmp_path, initial_commit=False)
+    proc = _run_commit(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    result = json.loads(proc.stdout)
+    assert result["status"] == "ok"
+
+    # No commits should have been created
+    log = subprocess.run(
+        ["git", "log", "--oneline"], cwd=str(project), capture_output=True, text=True
+    )
+    assert log.stdout.strip() == "", f"Expected no commits, got: {log.stdout!r}"
+
+
+def test_commit_step_creates_commit_when_enabled(tmp_path):
+    """initial_commit=true: commit step creates exactly one commit with scaffold files."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    subprocess.run(["git", "init"], cwd=str(project), capture_output=True)
+
+    # Write a file so there's something to commit
+    (project / "README.md").write_text("# hello\n")
+
+    plan = _frozen_plan(tmp_path, initial_commit=True)
+    proc = _run_commit(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    result = json.loads(proc.stdout)
+    assert result["status"] == "ok", result
+
+    # Exactly one commit should exist
+    log = subprocess.run(
+        ["git", "log", "--oneline"], cwd=str(project), capture_output=True, text=True
+    )
+    commits = [l for l in log.stdout.strip().splitlines() if l]
+    assert len(commits) == 1, f"Expected 1 commit, got {len(commits)}: {log.stdout!r}"
+    assert "scaffold" in log.stdout.lower() or "project-setup" in log.stdout.lower(), (
+        f"Commit message should mention scaffold/project-setup: {log.stdout!r}"
+    )
+
+
+def test_commit_step_nonfatal_when_nothing_to_commit(tmp_path):
+    """commit step with an empty index (nothing staged) warns and exits ok."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    subprocess.run(["git", "init"], cwd=str(project), capture_output=True)
+    # Don't write any files — empty working tree means git commit will fail
+
+    plan = _frozen_plan(tmp_path, initial_commit=True)
+    proc = _run_commit(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    result = json.loads(proc.stdout)
+    # Must not hard-fail — either succeeds with a warning or emits status=ok
+    assert result["status"] == "ok", result
+
+
+def test_commit_step_inspect_writes_nothing(tmp_path):
+    """commit step --inspect must not create any commit."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    subprocess.run(["git", "init"], cwd=str(project), capture_output=True)
+    (project / "README.md").write_text("# hello\n")
+
+    plan = _frozen_plan(tmp_path, initial_commit=True)
+    proc = _run_commit(project, plan, inspect=True)
+    assert proc.returncode == 0, proc.stderr
+    result = json.loads(proc.stdout)
+    assert result["status"] == "ok"
+
+    log = subprocess.run(
+        ["git", "log", "--oneline"], cwd=str(project), capture_output=True, text=True
+    )
+    assert log.stdout.strip() == "", f"--inspect must not commit; got: {log.stdout!r}"

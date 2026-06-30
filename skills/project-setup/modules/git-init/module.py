@@ -76,6 +76,129 @@ def _codex_preflight_check(project_dir: Path) -> str | None:
     )
 
 
+def _do_commit(sdk, inputs, args, project_dir: Path) -> int:
+    """Run the 'commit' step: create an initial scaffold commit.
+
+    Gate: only runs when init_git=true AND initial_commit=true.
+    Non-fatal on failure: emits a warning and exits 0.
+    """
+    init_git = inputs.get_bool("init_git", default=True)
+    initial_commit = inputs.get_bool("initial_commit", default=False)
+
+    warnings: list[str] = []
+
+    if not init_git or not initial_commit:
+        result = sdk.ModuleResult(
+            module_id="git-init",
+            step_id=args.step,
+            status="ok",
+            files_written=[],
+            message="initial_commit skipped (init_git=false or initial_commit=false)",
+        )
+        sdk.emit_result(result)
+        return 0
+
+    if args.inspect:
+        result = sdk.ModuleResult(
+            module_id="git-init",
+            step_id=args.step,
+            status="ok",
+            files_written=[],
+            diffs=[],
+            message="--inspect: would run git add -A && git commit",
+        )
+        sdk.emit_result(result)
+        return 0
+
+    git_bin = shutil.which("git")
+    if git_bin is None:
+        result = sdk.ModuleResult(
+            module_id="git-init",
+            step_id=args.step,
+            status="ok",
+            files_written=[],
+            warnings=["git not found on PATH; skipping initial commit. Run 'git add -A && git commit' manually."],
+        )
+        sdk.emit_result(result)
+        return 0
+
+    # Ensure .git exists before attempting a commit.
+    if not (project_dir / ".git").exists():
+        result = sdk.ModuleResult(
+            module_id="git-init",
+            step_id=args.step,
+            status="ok",
+            files_written=[],
+            warnings=["no .git directory found; skipping initial commit. Run 'git init' then commit manually."],
+        )
+        sdk.emit_result(result)
+        return 0
+
+    # Provide a fallback identity so the commit doesn't fail in fresh/CI
+    # environments where user.name/email haven't been configured.
+    _GIT_ID_FLAGS = [
+        "-c", "user.name=project-setup",
+        "-c", "user.email=project-setup@localhost",
+    ]
+
+    # Stage everything.
+    add_proc = subprocess.run(
+        ["git"] + _GIT_ID_FLAGS + ["add", "-A"],
+        capture_output=True,
+        text=True,
+        cwd=str(project_dir),
+    )
+    if add_proc.returncode != 0:
+        warnings.append(
+            f"git add -A failed (exit {add_proc.returncode}): {add_proc.stderr.strip()}. "
+            "Run 'git add -A && git commit' manually."
+        )
+        result = sdk.ModuleResult(
+            module_id="git-init",
+            step_id=args.step,
+            status="ok",
+            files_written=[],
+            warnings=warnings,
+        )
+        sdk.emit_result(result)
+        return 0
+
+    commit_proc = subprocess.run(
+        ["git"] + _GIT_ID_FLAGS + [
+            "commit", "-m", "Initial project scaffold (project-setup)",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(project_dir),
+    )
+    if commit_proc.returncode != 0:
+        stderr_text = commit_proc.stderr.strip() or commit_proc.stdout.strip()
+        warnings.append(
+            f"git commit failed (exit {commit_proc.returncode}): {stderr_text}. "
+            "Run 'git commit' manually after reviewing staged files."
+        )
+        result = sdk.ModuleResult(
+            module_id="git-init",
+            step_id=args.step,
+            status="ok",
+            files_written=[],
+            warnings=warnings,
+        )
+        sdk.emit_result(result)
+        return 0
+
+    result = sdk.ModuleResult(
+        module_id="git-init",
+        step_id=args.step,
+        status="ok",
+        files_written=[],
+        warnings=warnings,
+        message="Initial scaffold committed.",
+    )
+    sdk.emit_result(result)
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="git-init module")
     ap.add_argument("--plan", required=True, help="path to the frozen plan.json")
@@ -86,10 +209,13 @@ def main() -> int:
     sdk = _load_sdk()
     inputs = sdk.load_frozen_inputs(args.plan, module_id="git-init")
 
-    init_git = inputs.get_bool("init_git", default=True)
-
     project_dir_env = os.environ.get("PROJECT_DIR")
     project_dir = Path(project_dir_env).resolve() if project_dir_env else Path.cwd().resolve()
+
+    if args.step == "commit":
+        return _do_commit(sdk, inputs, args, project_dir)
+
+    init_git = inputs.get_bool("init_git", default=True)
 
     warnings: list[str] = []
     message = ""

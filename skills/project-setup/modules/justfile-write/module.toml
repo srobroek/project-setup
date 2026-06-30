@@ -22,6 +22,18 @@ prompt = "Create a justfile?"
 default = true
 required = false
 
+# Language overlay id that is enabled for this project (e.g. "python", "ts",
+# "go", "rust"). When supplied, justfile-write renders idiomatic recipe bodies
+# instead of fail-loud stubs. Supply the same value used to enable the lang-*
+# module. Empty string (the default) keeps the fail-loud stubs so CI is never
+# silently green for unconfigured commands.
+[[inputs]]
+key = "language"
+type = "string"
+prompt = "Language for justfile recipes (python / ts / go / rust / empty = stubs)"
+default = ""
+required = false
+
 [[steps]]
 id = "write"
 kind = "python"
