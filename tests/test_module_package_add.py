@@ -254,3 +254,188 @@ def test_workspace_guidance_in_message(tmp_path):
         or "uv.workspace" in message
         or "members" in message
     ), f"Workspace guidance not found in message: {message!r}"
+
+
+# ── BUG C: Python manifest must include [build-system] ───────────────────────
+
+def _frozen_plan_manifest(
+    tmp: Path,
+    name: str = "mylib",
+    lang: str = "python",
+    dir_: str = "packages",
+    pinned_deps: list | None = None,
+) -> Path:
+    """Build a frozen plan for the manifest step."""
+    plan = {
+        "schema_version": 1,
+        "mode": "init",
+        "order": ["package-add"],
+        "modules": {
+            "package-add": {
+                "id": "package-add",
+                "version": "1.0.0",
+                "reconcile": False,
+                "module_rel_root": _MODULE_REL,
+                "answers": {
+                    "name": name,
+                    "lang": lang,
+                    "dir": dir_,
+                    "pinned_deps": pinned_deps or [],
+                    "resolve_stack": False,
+                },
+                "steps": [{"id": "manifest", "kind": "python"}],
+            }
+        },
+    }
+    p = tmp / "plan.json"
+    p.write_text(json.dumps(plan))
+    return p
+
+
+def _run_manifest(project: Path, plan: Path) -> subprocess.CompletedProcess:
+    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "manifest"]
+    env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
+    return subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(project))
+
+
+def test_python_manifest_includes_build_system(tmp_path):
+    """BUG C: Python pyproject.toml written by package-add must contain [build-system]."""
+    project = tmp_path / "monorepo"
+    project.mkdir()
+    (project / "packages").mkdir()
+
+    plan = _frozen_plan_manifest(tmp_path, name="mylib", lang="python", dir_="packages")
+    proc = _run_manifest(project, plan)
+    assert proc.returncode == 0, proc.stderr
+    result = json.loads(proc.stdout)
+    assert result["status"] == "ok", result
+
+    pyproject = project / "packages" / "mylib" / "pyproject.toml"
+    assert pyproject.exists(), f"pyproject.toml not written; files_written={result.get('files_written')}"
+    content = pyproject.read_text()
+    assert "[build-system]" in content, (
+        f"[build-system] table missing from pyproject.toml:\n{content}"
+    )
+    assert "uv_build" in content, (
+        f"uv_build backend missing from pyproject.toml:\n{content}"
+    )
+
+
+def test_ts_manifest_has_no_build_system(tmp_path):
+    """TS package.json must NOT contain [build-system] (only Python gets it)."""
+    project = tmp_path / "monorepo"
+    project.mkdir()
+    (project / "packages").mkdir()
+
+    plan = _frozen_plan_manifest(tmp_path, name="mylib", lang="ts", dir_="packages")
+    proc = _run_manifest(project, plan)
+    assert proc.returncode == 0, proc.stderr
+
+    pkg_json = project / "packages" / "mylib" / "package.json"
+    assert pkg_json.exists(), "package.json not written"
+    content = pkg_json.read_text()
+    assert "[build-system]" not in content
+
+
+# ── Adversarial fix 3: TS workspace-edit must produce valid JSON ──────────────
+
+def _frozen_plan_workspace_edit(
+    tmp: Path,
+    name: str = "mylib",
+    lang: str = "ts",
+    dir_: str = "packages",
+) -> Path:
+    """Build a frozen plan for the workspace-edit step."""
+    plan = {
+        "schema_version": 1,
+        "mode": "init",
+        "order": ["package-add"],
+        "modules": {
+            "package-add": {
+                "id": "package-add",
+                "version": "1.0.0",
+                "reconcile": False,
+                "module_rel_root": _MODULE_REL,
+                "answers": {
+                    "name": name,
+                    "lang": lang,
+                    "dir": dir_,
+                    "resolve_stack": False,
+                },
+                "steps": [{"id": "workspace-edit", "kind": "python"}],
+            }
+        },
+    }
+    p = tmp / "plan.json"
+    p.write_text(json.dumps(plan))
+    return p
+
+
+def _run_workspace_edit(project: Path, plan: Path) -> subprocess.CompletedProcess:
+    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "workspace-edit"]
+    env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
+    return subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(project))
+
+
+def test_ts_workspace_edit_produces_valid_json(tmp_path):
+    """Fix 3: TS workspace-edit must not corrupt package.json — result must be valid JSON."""
+    project = tmp_path / "monorepo"
+    project.mkdir()
+
+    # Pre-existing root package.json (typical monorepo root)
+    root_pkg = {"name": "my-monorepo", "private": True, "version": "1.0.0", "workspaces": []}
+    (project / "package.json").write_text(json.dumps(root_pkg, indent=2) + "\n")
+
+    plan = _frozen_plan_workspace_edit(tmp_path, name="mylib", lang="ts", dir_="packages")
+    proc = _run_workspace_edit(project, plan)
+    assert proc.returncode == 0, proc.stderr
+
+    pkg_json_text = (project / "package.json").read_text()
+    # Must be parseable as valid JSON (not corrupted)
+    try:
+        data = json.loads(pkg_json_text)
+    except json.JSONDecodeError as exc:
+        raise AssertionError(
+            f"package.json is invalid JSON after workspace-edit:\n{pkg_json_text}\nError: {exc}"
+        ) from exc
+
+    # The workspaces array must contain the new member
+    assert "packages/mylib" in data.get("workspaces", []), (
+        f"packages/mylib not in workspaces[]; workspaces={data.get('workspaces')!r}"
+    )
+
+
+def test_ts_workspace_edit_idempotent(tmp_path):
+    """Fix 3: running workspace-edit twice must not duplicate the workspace entry."""
+    project = tmp_path / "monorepo"
+    project.mkdir()
+
+    root_pkg = {"name": "my-monorepo", "private": True, "version": "1.0.0", "workspaces": []}
+    (project / "package.json").write_text(json.dumps(root_pkg, indent=2) + "\n")
+
+    plan = _frozen_plan_workspace_edit(tmp_path, name="mylib", lang="ts", dir_="packages")
+    _run_workspace_edit(project, plan)
+    _run_workspace_edit(project, plan)
+
+    data = json.loads((project / "package.json").read_text())
+    count = data.get("workspaces", []).count("packages/mylib")
+    assert count == 1, f"packages/mylib appeared {count} times in workspaces (expected 1)"
+
+
+def test_ts_workspace_edit_no_existing_package_json(tmp_path):
+    """Fix 3: workspace-edit with no existing package.json creates one with workspaces."""
+    project = tmp_path / "monorepo"
+    project.mkdir()
+
+    plan = _frozen_plan_workspace_edit(tmp_path, name="utils", lang="ts", dir_="packages")
+    proc = _run_workspace_edit(project, plan)
+    assert proc.returncode == 0, proc.stderr
+
+    pkg_json_path = project / "package.json"
+    assert pkg_json_path.exists(), "package.json was not created"
+    data = json.loads(pkg_json_path.read_text())
+    assert "packages/utils" in data.get("workspaces", []), (
+        f"packages/utils not in workspaces[]; got {data.get('workspaces')!r}"
+    )

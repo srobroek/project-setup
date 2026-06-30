@@ -336,7 +336,9 @@ def _render_manifest(
     Uses sorted keys, no wall-clock. (FR-007, 003 determinism contract)
     """
     if lang == "python":
-        # pyproject.toml: minimal [project] + dependencies list
+        # pyproject.toml: minimal [project] + [build-system] + dependencies list.
+        # [build-system] is required for `pip install -e .` (PEP 517); without it
+        # the package is non-installable. Matches what `uv init --package` produces.
         deps_lines = "\n".join(f'  "{pin}",' for pin in sorted(pinned_deps))
         deps_block = f"[\n{deps_lines}\n]" if pinned_deps else "[]"
         return (
@@ -345,6 +347,10 @@ def _render_manifest(
             f'version = "0.1.0"\n'
             f'description = ""\n'
             f'dependencies = {deps_block}\n'
+            f'\n'
+            f'[build-system]\n'
+            f'requires = ["uv_build>=0.9,<10"]\n'
+            f'build-backend = "uv_build"\n'
         )
     elif lang == "ts":
         # package.json: minimal with dependencies dict (sorted keys)
@@ -410,14 +416,64 @@ def _do_workspace_edit(sdk, inputs, args, *, name: str, lang: str, dir_: str, pr
         )
         label = "uv workspace member"
     elif lang == "ts":
+        # TS workspace-edit: proper JSON edit — parse, add to workspaces[], re-serialize.
+        # Text-appending a comment + bare string to package.json corrupts the JSON.
         manifest_path = project_dir / "package.json"
-        block = (
-            f"\n{marker}\n"
-            f'  "{rel}"\n'
-        )
-        # For package.json workspaces we append a comment + the path; the gate
-        # message shows the manual command. This is a best-effort append.
         label = "package.json workspace entry"
+
+        if args.inspect:
+            existing = manifest_path.read_text(encoding="utf-8") if manifest_path.exists() else "{}"
+            already = False
+            try:
+                data_i = json.loads(existing)
+                already = rel in (data_i.get("workspaces") or [])
+            except Exception:  # noqa: BLE001
+                pass
+            diff_i = sdk.Diff(
+                path="package.json",
+                kind="skip" if already else "modify",
+                preview=f'({"already present" if already else f"would add {rel!r} to workspaces[]"})',
+            )
+            sdk.emit_result(sdk.ModuleResult(
+                module_id="package-add",
+                step_id=args.step,
+                status="ok",
+                diffs=[diff_i],
+                warnings=warnings,
+                message=f"would add {rel!r} to package.json workspaces[]",
+            ))
+            return 0
+
+        # Real edit: parse → add → re-serialize
+        files_written_ts: list[str] = []
+        if manifest_path.exists():
+            try:
+                data_ts = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                data_ts = {}
+        else:
+            data_ts = {}
+        ws: list = list(data_ts.get("workspaces") or [])
+        if rel not in ws:
+            ws.append(rel)
+            data_ts["workspaces"] = sorted(ws)
+            manifest_path.write_text(
+                json.dumps(data_ts, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            files_written_ts.append("package.json")
+            msg_ts = f"Added {rel!r} to package.json workspaces[]"
+        else:
+            msg_ts = f"package.json workspaces[]: {rel!r} already present (idempotent skip)"
+        sdk.emit_result(sdk.ModuleResult(
+            module_id="package-add",
+            step_id=args.step,
+            status="ok",
+            files_written=files_written_ts,
+            warnings=warnings,
+            message=msg_ts,
+        ))
+        return 0
     elif lang == "go":
         manifest_path = project_dir / "go.work"
         block = f"\n{marker}\nuse ./{rel}\n"
