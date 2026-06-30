@@ -8,14 +8,15 @@ Ports setup-go.sh (145 lines) to a native-root Python module.
 
 Steps:
   write    (python) — Derive module path from git remote if not provided,
-                      create cmd/ internal/ pkg/ directories + cmd/main.go,
+                      create cmd/ internal/ pkg/ directories + cmd/<binary>/main.go,
                       write .golangci.yml, append Go .gitignore block,
                       append pre-commit-golang hooks.
   scaffold (python) — Run `go mod init <module_path>` (G4-gated).
 
-Ordering note: cmd/main.go is a plain file write (package main / fmt.Println)
-that does NOT require go.mod to exist. The deterministic write step can safely
-precede the go mod init generator.
+Ordering note: cmd/<binary>/main.go is a plain file write (package main /
+fmt.Println) that does NOT require go.mod to exist. The deterministic write step
+can safely precede the go mod init generator. The binary lives one level under
+cmd/ so `go build ./...` does not collide with the cmd/ directory.
 
 External tool absence/failure is NON-FATAL: a warning is emitted and the
 module continues.  This mirrors the legacy WARN pattern in setup-go.sh.
@@ -99,6 +100,30 @@ def _derive_module_path(
     return fallback
 
 
+def _binary_name(project_name: str, module_path: str) -> str:
+    """Derive the command binary name for the ``cmd/<binary>/`` layout.
+
+    The entrypoint MUST live at ``cmd/<binary>/main.go`` rather than
+    ``cmd/main.go``: with the latter, ``go build ./...`` infers the binary name
+    from the package's parent directory (``cmd``) and tries to write an output
+    file named ``cmd`` into the working directory, which collides with the
+    ``cmd/`` directory itself ("build output \"cmd\" already exists and is a
+    directory"). Nesting one level down names the binary ``<binary>`` and removes
+    the collision.
+
+    Preference order for the name: project_name, then the last path segment of
+    the module path, then ``app``. The result is sanitized to a safe Go-ish
+    identifier (lowercased, non-alphanumerics collapsed to ``-``) so spaces or
+    punctuation in the project name cannot break the path or the build.
+    """
+    candidate = project_name.strip()
+    if not candidate and module_path:
+        candidate = module_path.rstrip("/").split("/")[-1]
+    candidate = candidate.lower()
+    candidate = re.sub(r"[^a-z0-9]+", "-", candidate).strip("-")
+    return candidate or "app"
+
+
 # --------------------------------------------------------------------------- #
 # Step handlers                                                                #
 # --------------------------------------------------------------------------- #
@@ -137,7 +162,12 @@ def _do_write(sdk, inputs, args) -> int:
         module_path = _derive_module_path(project_dir, warnings, project_name=project_name)
 
     # ── 2. Standard Go layout ──────────────────────────────────────────────── #
-    main_go_rel = "cmd/main.go"
+    # Entrypoint lives at cmd/<binary>/main.go (NOT cmd/main.go): the nested form
+    # gives `go build ./...` a binary name of <binary>, avoiding the "build output
+    # 'cmd' already exists and is a directory" collision the flat cmd/main.go
+    # layout triggers.
+    binary = _binary_name(project_name, module_path)
+    main_go_rel = f"cmd/{binary}/main.go"
     main_go_body = f'package main\n\nimport "fmt"\n\nfunc main() {{\n\tfmt.Println("{project_name}")\n}}\n'
     if not args.inspect:
         for d in ("cmd", "internal", "pkg"):

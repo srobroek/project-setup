@@ -16,12 +16,12 @@ reconcile = true
 after = ["gitignore-generate", "precommit-setup"]
 
 # Identity input — the agent supplies the SAME project name it gave core-identity.
-# project_name drives the package name embedded in cmd/main.go and the
+# project_name drives the cmd/<binary>/main.go path + its fmt.Println text and the
 # example.com/<name> fallback when no git remote is set.
 [[inputs]]
 key = "project_name"
 type = "string"
-prompt = "Project / package name (used for cmd/main.go and the module-path fallback)?"
+prompt = "Project / package name (used for cmd/<binary>/main.go and the module-path fallback)?"
 default = ""
 required = true
 
