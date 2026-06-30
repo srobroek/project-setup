@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1](https://github.com/srobroek/project-setup/compare/project-setup-v0.5.0...project-setup-v0.5.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* --add-module works for git sources, gains --enable, preserves sources.toml ([ef8e51b](https://github.com/srobroek/project-setup/commit/ef8e51bac923bbe37141c004b08ccfdcb7cb48bd))
+* **project-setup:** repair git --add-module, add --enable, lossless sources.toml round-trip ([d6249df](https://github.com/srobroek/project-setup/commit/d6249df6e9ead851b6a64b46668c4ac56680f568))
+
 ## [0.5.0](https://github.com/srobroek/project-setup/compare/project-setup-v0.4.1...project-setup-v0.5.0) (2026-06-30)
 
 
