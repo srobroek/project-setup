@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/srobroek/project-setup/compare/project-setup-v0.4.0...project-setup-v0.4.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* document bundled module distribution and refresh the project-setup umbrella ([ca63df6](https://github.com/srobroek/project-setup/commit/ca63df61a8e498656b8225e7b900a12daeed91ce))
+* **project-setup:** document bundled module distribution + refresh umbrella tree ([6d00c08](https://github.com/srobroek/project-setup/commit/6d00c08fa544def12501c7eba10108c3c59a5fcf))
+
 ## [0.4.0](https://github.com/srobroek/project-setup/compare/project-setup-v0.3.3...project-setup-v0.4.0) (2026-06-30)
 
 
