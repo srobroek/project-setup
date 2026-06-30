@@ -7,7 +7,7 @@ author = "Sjors Robroek"
 [module]
 id = "lang-rust"
 name = "Rust language overlay"
-version = "1.0.1"  # x-release-please-version
+version = "1.0.2"  # x-release-please-version
 description = "Add Rust tooling (cargo, rustfmt, clippy) to a scaffolded project. Appends Rust .gitignore entries and pre-commit-rust hooks."
 default_enabled = false
 reconcile = true
