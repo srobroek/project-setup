@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2](https://github.com/srobroek/project-setup/compare/ci-github-actions-v1.1.1...ci-github-actions-v1.1.2) (2026-06-30)
+
+
+### Bug Fixes
+
+* **ci-github-actions:** emit valid with: YAML mapping; install just; warn on empty plan ([77a2043](https://github.com/srobroek/project-setup/commit/77a2043754159956ab78964f80d38dae5971f5ad))
+* deterministic scaffolding — correct package identity, installable manifests, valid CI, enforced interview ([fed956f](https://github.com/srobroek/project-setup/commit/fed956f22f978804b5f4ffece839c85e4e8b9324))
+
 ## [1.1.1](https://github.com/srobroek/project-setup/compare/ci-github-actions-v1.1.0...ci-github-actions-v1.1.1) (2026-06-30)
 
 
