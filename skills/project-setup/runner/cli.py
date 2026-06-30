@@ -114,6 +114,18 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--check-answers",
+        action="store_true",
+        default=False,
+        help=(
+            "Preflight only: discover + resolve modules and verify EVERY required "
+            "input for the enabled module set is present in --answers, then exit "
+            "WITHOUT planning or executing. Reports all missing required inputs / "
+            "tools / order errors at once (exit 1 if any). Run this before the real "
+            "--answers run so the interview can't silently skip required questions."
+        ),
+    )
+    p.add_argument(
         "--skill-version",
         default="",
         metavar="VERSION",
@@ -598,6 +610,7 @@ def main(argv: list[str] | None = None) -> int:
             skill_version=args.skill_version,
             non_interactive=non_interactive,
             dry_run=args.dry_run,
+            check_only=args.check_answers,
             refresh=args.refresh,
             active_flags=active_flags,
         )

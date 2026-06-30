@@ -249,8 +249,16 @@ def idempotent_write(
                 abs_path.write_bytes(body_bytes)
             return Diff(path=rel_str, kind="modify", preview=_preview(body_bytes))
         else:
-            # Write-if-absent: file exists, skip
-            return Diff(path=rel_str, kind="skip", preview="(exists, skipping — use reconcile to overwrite)")
+            # Write-if-absent: treat an empty/whitespace-only file as absent so
+            # a stale placeholder created by a prior partial run doesn't silently
+            # suppress the real content. A non-empty existing file is always
+            # preserved (never clobber real user content).
+            if existing.strip():
+                return Diff(path=rel_str, kind="skip", preview="(exists, skipping — use reconcile to overwrite)")
+            # Existing file is empty/whitespace-only → overwrite it.
+            if not inspect:
+                abs_path.write_bytes(body_bytes)
+            return Diff(path=rel_str, kind="create", preview=_preview(body_bytes))
     else:
         if not inspect:
             abs_path.parent.mkdir(parents=True, exist_ok=True)
