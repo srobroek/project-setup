@@ -15,6 +15,16 @@ reconcile = true
 [order]
 after = ["gitignore-generate", "precommit-setup"]
 
+# Identity input — the agent supplies the SAME project name it gave core-identity.
+# project_name is patched into package.json "name" after the init tool runs
+# (bun/pnpm init don't accept a name flag reliably, so we post-patch).
+[[inputs]]
+key = "project_name"
+type = "string"
+prompt = "Project / package name (written into package.json \"name\")?"
+default = ""
+required = true
+
 [[inputs]]
 key = "target"
 type = "string"

@@ -1174,3 +1174,141 @@ def test_013_ui_kit_scaffold_reproduce_safe_skips(tmp_path):
     assert "bunx shadcn@latest init --defaults" in notes_content, (
         f"Expected init command in STACK-NOTES.md; got:\n{notes_content}"
     )
+
+
+# ── BUG A+B: project_name answer ─────────────────────────────────────────────
+
+def _frozen_plan_with_name(tmp: Path, project_name: str, pkg_manager: str = "bun") -> Path:
+    """Build a frozen plan that includes a project_name answer (write step)."""
+    plan = {
+        "schema_version": 1,
+        "mode": "init",
+        "order": ["lang-ts"],
+        "modules": {
+            "lang-ts": {
+                "id": "lang-ts",
+                "version": "1.0.0",
+                "reconcile": True,
+                "module_rel_root": _MODULE_REL,
+                "answers": {
+                    "project_name": project_name,
+                    "package_manager": pkg_manager,
+                    "framework": "plain",
+                    "target": "",
+                    "pinned_deps": [],
+                    "dev_deps": [],
+                    "package_manager_pin": "",
+                    "template_id": "none",
+                    "runtime": "bun",
+                    "node_line": "",
+                },
+                "steps": [{"id": "write", "kind": "python"}],
+            }
+        },
+    }
+    p = tmp / "plan.json"
+    p.write_text(json.dumps(plan))
+    return p
+
+
+def _frozen_scaffold_plan_with_name(tmp: Path, project_name: str, pkg_manager: str = "bun") -> Path:
+    """Build a frozen plan for the scaffold step with a project_name answer."""
+    plan = {
+        "schema_version": 1,
+        "mode": "init",
+        "order": ["lang-ts"],
+        "modules": {
+            "lang-ts": {
+                "id": "lang-ts",
+                "version": "1.0.0",
+                "reconcile": True,
+                "module_rel_root": _MODULE_REL,
+                "answers": {
+                    "project_name": project_name,
+                    "package_manager": pkg_manager,
+                    "framework": "plain",
+                    "pinned_deps": [],
+                    "dev_deps": [],
+                    "package_manager_pin": "",
+                    "template_id": "none",
+                    "runtime": "bun",
+                    "node_line": "",
+                },
+                "steps": [{"id": "scaffold", "kind": "python"}],
+            }
+        },
+    }
+    p = tmp / "plan.json"
+    p.write_text(json.dumps(plan))
+    return p
+
+
+def _run_scaffold(
+    project: Path,
+    plan: Path,
+    stub_dir: Path | None = None,
+) -> subprocess.CompletedProcess:
+    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "scaffold"]
+    env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
+    if stub_dir is not None:
+        env["PATH"] = f"{stub_dir}:{env.get('PATH', '')}"
+    return subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(project))
+
+
+def _stub_pkg_and_bun_init(tmp: Path, pkg_json_content: dict | None = None) -> Path:
+    """Write a bun stub that creates package.json with a dir-based name (simulating real bun init)."""
+    stub_dir = tmp / "stubs2"
+    stub_dir.mkdir(exist_ok=True)
+    # The bun stub writes a package.json named after a fixed test dir to simulate
+    # bun init naming the package after the directory, not after the answer.
+    init_content = json.dumps(pkg_json_content or {"name": "some-directory", "version": "0.1.0"}, indent=2)
+    # Write the stub script inline using a here-doc approach via Python
+    stub_script = f"""#!/bin/sh
+if [ "$1" = "init" ]; then
+    cat > package.json << 'EOF'
+{init_content}
+EOF
+fi
+exit 0
+"""
+    for name in ("bun", "bunx", "pnpm"):
+        stub = stub_dir / name
+        stub.write_text(stub_script)
+        stub.chmod(0o755)
+    return stub_dir
+
+
+def test_manifest_has_project_name_input():
+    """manifest must declare a project_name input (required=true)."""
+    manifest = _load("manifest")
+    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    input_keys = {inp.key for inp in mani.inputs}
+    assert "project_name" in input_keys, (
+        f"project_name input missing from lang-ts module.toml; keys: {input_keys}"
+    )
+    pn_input = next(inp for inp in mani.inputs if inp.key == "project_name")
+    assert pn_input.required is True, "project_name input must be required=true"
+
+
+def test_scaffold_patches_package_json_name_from_answer(tmp_path):
+    """BUG A+B: scaffold step patches package.json 'name' from project_name answer."""
+    project = tmp_path / "some-directory"
+    project.mkdir()
+    (project / ".gitignore").write_text("# base\n")
+
+    # Pre-create package.json with the dir name (simulating what bun init would produce)
+    (project / "package.json").write_text(
+        json.dumps({"name": "some-directory", "version": "0.1.0"}, indent=2) + "\n"
+    )
+
+    stub_dir = _stub_pkg_managers(tmp_path)
+    plan = _frozen_scaffold_plan_with_name(tmp_path, project_name="my-ts-app")
+
+    proc = _run_scaffold(project, plan, stub_dir)
+    assert proc.returncode == 0, proc.stderr
+
+    pkg_json = json.loads((project / "package.json").read_text())
+    assert pkg_json["name"] == "my-ts-app", (
+        f"Expected package.json 'name' == 'my-ts-app', got {pkg_json.get('name')!r}"
+    )

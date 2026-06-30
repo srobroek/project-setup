@@ -247,6 +247,12 @@ def _do_write(sdk, inputs, args) -> int:
     template_id: str = inputs.get_str("template_id", default="none") or "none"
     runtime: str = inputs.get_str("runtime", default="bun") or "bun"
     node_line: str = inputs.get_str("node_line", default="")
+    # Package identity: prefer the explicit project_name answer; fall back to
+    # the directory name when absent (preserves existing behaviour for answer-
+    # less runs). bun/pnpm init don't accept a name flag reliably, so we
+    # post-patch package.json "name" after the init tool runs.
+    raw_name = inputs.get_str("project_name", default="")
+
 
     # Normalize framework to known values; treat unknowns as "plain"
     if framework not in ("nuxt", "vite", "plain", "sst"):
@@ -421,6 +427,32 @@ def _do_write(sdk, inputs, args) -> int:
                                   warnings, inspect=args.inspect,
                                   engines=node_engines)
 
+    # ── 2a. Patch package.json "name" from the project_name answer ────────── #
+    # _patch_pins_into_package_json only sets deps/packageManager/engines.
+    # Explicitly set "name" here so the deterministic write step already reflects
+    # the answer-driven identity before the external generator (scaffold step) runs.
+    # bun/pnpm init default "name" to the directory name; override with the answer.
+    project_name_for_write = raw_name.strip() if raw_name.strip() else project_dir.name
+    if not args.inspect and project_name_for_write:
+        pkg_json_path_w = project_dir / "package.json"
+        if pkg_json_path_w.exists():
+            try:
+                _data_w = json.loads(pkg_json_path_w.read_text(encoding="utf-8"))
+                if isinstance(_data_w, dict) and _data_w.get("name") != project_name_for_write:
+                    _data_w["name"] = project_name_for_write
+                    pkg_json_path_w.write_text(
+                        json.dumps(_data_w, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                    if "package.json" not in files_written:
+                        files_written.append("package.json")
+                    diffs.append(sdk.Diff(
+                        path="package.json", kind="modify",
+                        preview=f'(package.json "name" set to {project_name_for_write!r})',
+                    ))
+            except Exception as exc:  # noqa: BLE001
+                warnings.append(f"WARN: could not patch package.json name: {exc}")
+
     # ── 2b. Write .node-version (FR-014/015, SC-006) ──────────────────────── #
     # node runtime + non-empty node_line → .node-version with reconcile=False
     # (write-if-absent; existing .node-version is never overwritten).
@@ -575,6 +607,12 @@ def _do_scaffold(sdk, inputs, args) -> int:
     diffs = []
     files_written: list[str] = []
 
+    # Package identity (mirrors write step): prefer project_name answer; fall
+    # back to dir name. bun/pnpm init don't take a name flag reliably, so we
+    # post-patch package.json "name" after the init tool runs.
+    raw_name = inputs.get_str("project_name", default="")
+    project_name = raw_name.strip() if raw_name.strip() else project_dir.name
+
     # ── External framework generator (network; may --force-overwrite) ──────── #
     if framework == "nuxt":
         if not (project_dir / "nuxt.config.ts").exists():
@@ -611,6 +649,35 @@ def _do_scaffold(sdk, inputs, args) -> int:
                 warnings.append(f"inspect: would run {pkg_manager} init")
         else:
             diffs.append(sdk.Diff(path="package.json", kind="skip", preview="(package.json already exists)"))
+
+    # ── Post-init: patch package.json "name" from the answer ──────────────── #
+    # bun init and pnpm init name the package after the directory, not the
+    # project_name answer. Patch "name" (and "description" if present as a
+    # placeholder) so the published package name matches the frozen identity.
+    if not args.inspect and project_name:
+        pkg_json_path = project_dir / "package.json"
+        if pkg_json_path.exists():
+            try:
+                data = json.loads(pkg_json_path.read_text(encoding="utf-8"))
+                if isinstance(data, dict):
+                    changed = False
+                    if data.get("name") != project_name:
+                        data["name"] = project_name
+                        changed = True
+                    if changed:
+                        pkg_json_path.write_text(
+                            json.dumps(data, indent=2, sort_keys=True) + "\n",
+                            encoding="utf-8",
+                        )
+                        if "package.json" not in files_written:
+                            files_written.append("package.json")
+                        diffs.append(sdk.Diff(
+                            path="package.json",
+                            kind="modify",
+                            preview=f'(package.json "name" set to {project_name!r})',
+                        ))
+            except Exception as exc:  # noqa: BLE001
+                warnings.append(f"WARN: could not patch package.json name: {exc}")
 
     # ── Re-merge frozen pins (the generator may have clobbered package.json) ── #
     _patch_pins_into_package_json(sdk, project_dir, pinned_deps, dev_deps,
