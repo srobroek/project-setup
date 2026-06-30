@@ -668,6 +668,20 @@ def run_pipeline(
             io.notify(f"[ERROR] {err.how_to_fix}")
         return result
 
+    # Capture the gate-flag set declared across ALL discovered modules (before the
+    # enabled-only filter below) so flag validation can tell a TYPO (matches no
+    # gate anywhere) from an INERT flag (valid for a discovered-but-disabled
+    # module). Only the typo case is a hard error.
+    all_declared_flags: set[str] = set()
+    for _m in manifests:
+        for _s in getattr(_m, "steps", []):
+            _af = getattr(_s, "allow_flag", None)
+            _sf = getattr(_s, "skip_flag", None)
+            if _af:
+                all_declared_flags.add(_af)
+            if _sf:
+                all_declared_flags.add(_sf)
+
     # Filter manifests to enabled set only — the remainder of the pipeline
     # (interview, validate, plan, execute) sees ONLY the enabled modules.
     manifests = [m for m in manifests if m.id in enabled_ids]
@@ -756,7 +770,11 @@ def run_pipeline(
     freeze(plan, path=plan_path)
     result.plan_path = plan_path
 
-    # ── Loud validation: reject unknown active flags ─────────────────────── #
+    # ── Loud validation: reject TYPO flags; warn on INERT flags ──────────── #
+    # A flag matching a gate in an ENABLED module is honored. A flag matching a
+    # gate only in a DISABLED-but-discovered module is INERT (harmless — its gate
+    # never runs this round) → warn, don't fail. A flag matching NO declared gate
+    # anywhere is almost certainly a TYPO → hard error listing valid flags.
     if active_flags:
         declared_flags: set[str] = set()
         for mod in plan.modules.values():
@@ -767,18 +785,27 @@ def run_pipeline(
                     declared_flags.add(af)
                 if sf:
                     declared_flags.add(sf)
-        unknown = active_flags - declared_flags
+        not_enabled = active_flags - declared_flags
+        # Inert: valid for a discovered-but-disabled module (not a typo).
+        inert = not_enabled & all_declared_flags
+        unknown = not_enabled - all_declared_flags
+        if inert:
+            io.notify(
+                f"[WARN] gate flag(s) {sorted(inert)} are valid but their module is "
+                f"not enabled this run — ignoring (no gate to apply them to)."
+            )
         if unknown:
             if _owns_plan_cleanup:
                 plan_path.unlink(missing_ok=True)
             err = SetupError(
                 error_code=ErrorCode.INPUT_VALUE_INVALID,
-                expected=f"flags matching declared gates: {sorted(declared_flags)}",
+                expected=f"flags matching declared gates: {sorted(all_declared_flags)}",
                 received=f"unknown flag(s): {sorted(unknown)}",
                 how_to_fix=(
-                    f"The following flag(s) do not match any declared allow_flag or "
-                    f"skip_flag in the enabled modules: {sorted(unknown)}. "
-                    f"Valid flags for this run: {sorted(declared_flags)}."
+                    f"The following flag(s) do not match any allow_flag or skip_flag "
+                    f"declared by any module: {sorted(unknown)}. "
+                    f"Valid flags (across all discovered modules): {sorted(all_declared_flags)}; "
+                    f"active this run: {sorted(declared_flags)}."
                 ),
             )
             result.errors.append(err)

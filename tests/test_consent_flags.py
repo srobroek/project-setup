@@ -275,6 +275,94 @@ def test_previously_unreachable_gate_fires_with_allow(tmp_path):
     assert "gated-mod" in result.modules_executed
 
 
+def test_inert_flag_for_disabled_module_warns_not_errors(tmp_path):
+    """A flag valid for a DISABLED-but-discovered module is inert, not a typo.
+
+    Regression: previously `declared_flags` came only from ENABLED plan modules,
+    so a valid flag whose module wasn't enabled hard-errored the whole run. Now
+    such a flag warns and the run proceeds; only a flag matching NO declared gate
+    anywhere is a hard error.
+    """
+    plugin_root = _make_plugin_with_gate(tmp_path, allow_flag="allow-ci-write")
+    # Add a SECOND module that is NOT default-enabled, declaring allow-public-repo.
+    dis_dir = plugin_root / "modules" / "disabled-mod"
+    dis_dir.mkdir(parents=True)
+    (dis_dir / "module.toml").write_text(textwrap.dedent("""\
+        [meta]
+        repository = "github.com/test/test"
+        author = "Test"
+
+        [module]
+        id = "disabled-mod"
+        name = "Disabled Module"
+        version = "1.0.0"
+        description = "Not enabled this run"
+        reconcile = false
+        default_enabled = false
+
+        [order]
+        requires = []
+        after = []
+        before = []
+
+        [[steps]]
+        id = "gate-step"
+        kind = "gate"
+        message = "Proceed?"
+        hardness = "hard"
+        allow_flag = "allow-public-repo"
+
+        [[steps]]
+        id = "run"
+        kind = "python"
+    """))
+    result_json = json.dumps(_valid_result("disabled-mod"))
+    (dis_dir / "module.py").write_text(textwrap.dedent(f"""\
+        import argparse
+        p = argparse.ArgumentParser()
+        p.add_argument("--plan"); p.add_argument("--step"); p.add_argument("--inspect", action="store_true")
+        p.parse_args()
+        print({result_json!r})
+    """))
+
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+
+    io = ScriptedIO(default_confirm=True)
+    result = run_pipeline(
+        project_dir=project_dir,
+        io=io,
+        non_interactive=True,
+        plugin_root_path=plugin_root,
+        plan_path=tmp_path / "cache" / "plan.json",
+        # allow-public-repo is declared by disabled-mod (not enabled) → INERT, not a typo.
+        active_flags=frozenset(["allow-ci-write", "allow-public-repo"]),
+    )
+
+    assert result.success is True, [e.how_to_fix for e in result.errors]
+    assert "gated-mod" in result.modules_executed
+
+
+def test_true_typo_flag_still_hard_errors(tmp_path):
+    """A flag matching NO declared gate anywhere is still a loud hard error."""
+    plugin_root = _make_plugin_with_gate(tmp_path, allow_flag="allow-ci-write")
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+
+    io = ScriptedIO(default_confirm=True)
+    result = run_pipeline(
+        project_dir=project_dir,
+        io=io,
+        non_interactive=True,
+        plugin_root_path=plugin_root,
+        plan_path=tmp_path / "cache" / "plan.json",
+        active_flags=frozenset(["allow-cii-wrte-typo"]),
+    )
+
+    assert result.success is False
+    assert any("allow-cii-wrte-typo" in e.how_to_fix for e in result.errors)
+
+
 # --------------------------------------------------------------------------- #
 # (f) END-TO-END via cli.main(): answers-file `allow` reaches the pipeline     #
 #     gate resolver — regression guard for the wiring bug where main() passed  #
