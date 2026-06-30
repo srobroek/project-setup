@@ -7,7 +7,7 @@ author = "Sjors Robroek"
 [module]
 id = "env-example"
 name = ".env.example from stack"
-version = "1.0.0"
+version = "1.1.0"
 description = "Derive .env.example from the resolved stack (framework_python / framework_ts / extra_env_hints). Agent maps the stack to a structured env_keys list; python step writes placeholder-only .env.example. Hard-refuses any placeholder that looks like a real credential."
 default_enabled = false
 reconcile = true

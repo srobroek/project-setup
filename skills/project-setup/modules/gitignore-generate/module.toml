@@ -7,7 +7,7 @@ author = "Sjors Robroek"
 [module]
 id = "gitignore-generate"
 name = "Gitignore"
-version = "1.0.0"
+version = "1.1.0"
 description = "Compose a .gitignore from vendored CC0 github/gitignore templates plus a project-specific custom block. Optionally fetches additional templates on demand."
 default_enabled = true
 reconcile = true
