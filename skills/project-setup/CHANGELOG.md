@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.4](https://github.com/srobroek/project-setup/compare/project-setup-v0.5.3...project-setup-v0.5.4) (2026-06-30)
+
+
+### Bug Fixes
+
+* make addon catalog fetch work + ship a default catalog ([8cd3a1b](https://github.com/srobroek/project-setup/commit/8cd3a1b6b5035694792866fd9a33f2dd0f43996d))
+* make addon catalog fetch work and ship a default catalog ([235587b](https://github.com/srobroek/project-setup/commit/235587bef3d38226ba9c8b906185998b7cbd3ac4))
+
 ## [0.5.3](https://github.com/srobroek/project-setup/compare/project-setup-v0.5.2...project-setup-v0.5.3) (2026-06-30)
 
 
