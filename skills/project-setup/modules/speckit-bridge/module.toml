@@ -7,7 +7,7 @@ author = "Sjors Robroek"
 [module]
 id = "speckit-bridge"
 name = "Speckit bridge"
-version = "1.0.0"  # x-release-please-version
+version = "1.0.1"  # x-release-please-version
 description = "Install and initialise speckit when spec_mode is lightweight or full."
 default_enabled = false
 reconcile = false
