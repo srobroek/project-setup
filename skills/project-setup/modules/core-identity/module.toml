@@ -7,7 +7,7 @@ author = "Sjors Robroek"
 [module]
 id = "core-identity"
 name = "Core project identity"
-version = "1.1.0"  # x-release-please-version
+version = "1.1.1"  # x-release-please-version
 description = "Capture the project's identity answers (name, org, layout, license, etc.). No filesystem work — this module is the upstream input provider for all other modules."
 default_enabled = true
 reconcile = false
