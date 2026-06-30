@@ -7,7 +7,7 @@ author = "Sjors Robroek"
 [module]
 id = "codex-config"
 name = "Codex project config"
-version = "1.0.0"
+version = "1.0.0"  # x-release-please-version
 description = "Scaffold a project-scoped .codex/config.toml with override guidance."
 default_enabled = false
 reconcile = false

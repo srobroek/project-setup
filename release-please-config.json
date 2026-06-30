@@ -8,9 +8,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "yaml",
-          "path": "apm.yml",
-          "jsonpath": "$.version"
+          "type": "generic",
+          "path": "apm.yml"
         }
       ]
     },
@@ -20,9 +19,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/agents-md/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/agents-md/module.toml"
         }
       ]
     },
@@ -32,9 +30,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/apm-install/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/apm-install/module.toml"
         }
       ]
     },
@@ -44,9 +41,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/ci-github-actions/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/ci-github-actions/module.toml"
         }
       ]
     },
@@ -56,9 +52,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/codex-config/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/codex-config/module.toml"
         }
       ]
     },
@@ -68,9 +63,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/core-identity/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/core-identity/module.toml"
         }
       ]
     },
@@ -80,9 +74,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/dirs-scaffold/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/dirs-scaffold/module.toml"
         }
       ]
     },
@@ -92,9 +85,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/env-example/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/env-example/module.toml"
         }
       ]
     },
@@ -104,9 +96,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/git-init/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/git-init/module.toml"
         }
       ]
     },
@@ -116,9 +107,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/github-repo/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/github-repo/module.toml"
         }
       ]
     },
@@ -128,9 +118,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/gitignore-generate/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/gitignore-generate/module.toml"
         }
       ]
     },
@@ -140,9 +129,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/justfile-write/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/justfile-write/module.toml"
         }
       ]
     },
@@ -152,9 +140,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/lang-go/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/lang-go/module.toml"
         }
       ]
     },
@@ -164,9 +151,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/lang-python/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/lang-python/module.toml"
         }
       ]
     },
@@ -176,9 +162,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/lang-rust/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/lang-rust/module.toml"
         }
       ]
     },
@@ -188,9 +173,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/lang-ts/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/lang-ts/module.toml"
         }
       ]
     },
@@ -200,9 +184,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/license-write/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/license-write/module.toml"
         }
       ]
     },
@@ -212,9 +195,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/mcp-config/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/mcp-config/module.toml"
         }
       ]
     },
@@ -224,9 +206,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/org-policy/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/org-policy/module.toml"
         }
       ]
     },
@@ -236,9 +217,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/package-add/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/package-add/module.toml"
         }
       ]
     },
@@ -248,9 +228,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/precommit-setup/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/precommit-setup/module.toml"
         }
       ]
     },
@@ -260,9 +239,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/quality-hooks/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/quality-hooks/module.toml"
         }
       ]
     },
@@ -272,9 +250,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/readme-draft/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/readme-draft/module.toml"
         }
       ]
     },
@@ -284,9 +261,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/speckit-bridge/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/speckit-bridge/module.toml"
         }
       ]
     },
@@ -296,9 +272,8 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "toml",
-          "path": "skills/project-setup/modules/stack-adr/module.toml",
-          "jsonpath": "$.module.version"
+          "type": "generic",
+          "path": "skills/project-setup/modules/stack-adr/module.toml"
         }
       ]
     }

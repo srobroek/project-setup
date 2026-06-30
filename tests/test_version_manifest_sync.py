@@ -28,7 +28,12 @@ def _manifest() -> dict[str, str]:
 
 
 def _apm_version() -> str | None:
-    m = re.search(r"^version:\s*(.+)$", (_REPO / "apm.yml").read_text(encoding="utf-8"), re.M)
+    # Capture the bare version token; tolerate an optional trailing comment
+    # (e.g. the `# x-release-please-version` annotation that drives the
+    # release-please generic updater).
+    m = re.search(
+        r"^version:\s*[\"']?([^\s\"'#]+)", (_REPO / "apm.yml").read_text(encoding="utf-8"), re.M
+    )
     return m.group(1).strip() if m else None
 
 
