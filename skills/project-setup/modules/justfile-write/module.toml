@@ -7,7 +7,7 @@ author = "Sjors Robroek"
 [module]
 id = "justfile-write"
 name = "Skeleton justfile"
-version = "1.0.1"  # x-release-please-version
+version = "1.0.2"  # x-release-please-version
 description = "Write a skeleton justfile with default/test/lint/build/dev/clean targets. Skipped when use_just=false."
 default_enabled = false
 reconcile = false
