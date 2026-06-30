@@ -16,9 +16,14 @@ orchestration. Read this whole file before running it.
 into that tag's tree. Each module ALSO carries its own release tag
 (`<id>-vX.Y.Z`) so it can version and be fetched independently via a declared
 git source (see step 1 below). Maintenance note: because the marketplace bundle
-ships the umbrella tag's tree, a module-only fix must be followed by a fresh
-`project-setup` release so the bundled tree (and any consumer pinned to it) picks
-the fix up — the module's own tag advancing is not enough for bundle consumers.
+ships the umbrella tag's tree, a module-only fix to a CURRENTLY-BUNDLED module
+must be followed by a fresh `project-setup` release so the bundled tree (and any
+consumer pinned to it) picks the fix up — the module's own tag advancing is not
+enough for bundle consumers. (Thin-core migration in progress: the bundled set is
+being reduced to the 6 base modules — core-identity, dirs-scaffold,
+gitignore-generate, license-write, agents-md, git-init — with the rest fetched
+from the addon catalog by their own pinned tags, at which point only core fixes
+will need an umbrella bump.)
 
 `uv` is a **hard prerequisite**. The runner is Python launched via `uv run`. If
 `uv` is missing, the runner exits with an install instruction — do not try to
