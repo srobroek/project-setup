@@ -7,7 +7,7 @@ author = "Sjors Robroek"
 [module]
 id = "lang-ts"
 name = "TypeScript language overlay"
-version = "1.1.0"  # x-release-please-version
+version = "1.2.0"  # x-release-please-version
 description = "Add TypeScript tooling (bun/pnpm, tsconfig, biome, prettier) to a scaffolded project. Appends Node .gitignore entries and biome/prettier pre-commit hooks."
 default_enabled = false
 reconcile = true
