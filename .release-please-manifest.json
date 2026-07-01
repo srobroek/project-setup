@@ -14,7 +14,7 @@
   "catalog/modules/justfile-write": "1.2.0",
   "catalog/modules/lang-go": "1.1.0",
   "catalog/modules/lang-python": "1.2.1",
-  "catalog/modules/lang-rust": "1.0.2",
+  "catalog/modules/lang-rust": "1.1.0",
   "catalog/modules/lang-ts": "1.2.1",
   "catalog/modules/mcp-config": "1.2.0",
   "catalog/modules/org-policy": "1.0.1",
