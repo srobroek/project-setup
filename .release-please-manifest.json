@@ -6,7 +6,7 @@
   "skills/project-setup/modules/git-init": "1.1.0",
   "skills/project-setup/modules/gitignore-generate": "1.1.1",
   "skills/project-setup/modules/license-write": "2.0.1",
-  "catalog/modules/apm-install": "1.0.1",
+  "catalog/modules/apm-install": "1.1.0",
   "catalog/modules/ci-github-actions": "1.1.3",
   "catalog/modules/codex-config": "1.0.1",
   "catalog/modules/env-example": "1.1.1",
