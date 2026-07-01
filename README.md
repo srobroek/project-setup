@@ -65,3 +65,5 @@ to gh-pages on every release via the `catalog-publish` workflow.
 ## License
 
 Apache-2.0
+
+<!-- addon modules are fetched from catalog/modules/ (thin-core, 2026-07) -->
