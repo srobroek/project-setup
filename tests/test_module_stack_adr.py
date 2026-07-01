@@ -33,7 +33,8 @@ from pathlib import Path
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
-_MODULE_REL = "modules/stack-adr"
+_MODULE_REL = "catalog/modules/stack-adr"
+_MODULE_ROOT = _PKG / "catalog" / "modules" / "stack-adr"
 
 
 def _load(name: str):
@@ -91,7 +92,7 @@ def _frozen_plan(
             "id": "lang-python",
             "version": "1.0.0",
             "reconcile": True,
-            "module_rel_root": "modules/lang-python",
+            "module_rel_root": "catalog/modules/lang-python",
             "answers": resolver_answers,
             "steps": [],
         }
@@ -117,7 +118,7 @@ def _run(
     *,
     inspect: bool = False,
 ) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "write"]
     if inspect:
         cmd.append("--inspect")
@@ -131,7 +132,7 @@ def _run(
 
 def test_manifest_parses_no_errors():
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, mani.errors
     assert mani.id == "stack-adr"
     # opt-in (spec 012 Decision J amended): keeps the 6-core minimal default footprint.
@@ -141,7 +142,7 @@ def test_manifest_parses_no_errors():
 
 def test_manifest_write_step_is_python():
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     write_steps = [s for s in mani.steps if s.id == "write"]
     assert len(write_steps) == 1
     assert write_steps[0].kind == "python"
@@ -150,7 +151,7 @@ def test_manifest_write_step_is_python():
 def test_manifest_staleness_step_reproduce_only():
     """staleness step must carry reproduce_only=True (spec 012 FR-009)."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     staleness = next((s for s in mani.steps if s.id == "staleness"), None)
     assert staleness is not None, "staleness step missing from manifest"
     assert staleness.kind == "agent"
@@ -160,7 +161,7 @@ def test_manifest_staleness_step_reproduce_only():
 def test_manifest_staleness_gate_informational_init_only():
     """staleness-gate must have hardness=informational AND init_only=True (FR-011)."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     gate = next((s for s in mani.steps if s.id == "staleness-gate"), None)
     assert gate is not None, "staleness-gate step missing from manifest"
     assert gate.kind == "gate"
@@ -171,7 +172,7 @@ def test_manifest_staleness_gate_informational_init_only():
 def test_manifest_order_after():
     """[order] after must include both lang-python and lang-ts."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert "lang-python" in mani.order["after"]
     assert "lang-ts" in mani.order["after"]
     # NO requires — order only, not a hard dependency.
@@ -181,7 +182,7 @@ def test_manifest_order_after():
 def test_manifest_inputs_declared():
     """format and adr_path inputs must be declared."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     keys = {i.key for i in mani.inputs}
     assert "format" in keys
     assert "adr_path" in keys
@@ -570,7 +571,7 @@ def test_multiple_resolver_modules_both_in_output(tmp_path):
             "id": "lang-python",
             "version": "1.0.0",
             "reconcile": True,
-            "module_rel_root": "modules/lang-python",
+            "module_rel_root": "catalog/modules/lang-python",
             "answers": {
                 "framework": "fastapi",
                 "ecosystem": "pypi",
@@ -583,7 +584,7 @@ def test_multiple_resolver_modules_both_in_output(tmp_path):
             "id": "lang-ts",
             "version": "1.0.0",
             "reconcile": True,
-            "module_rel_root": "modules/lang-ts",
+            "module_rel_root": "catalog/modules/lang-ts",
             "answers": {
                 "framework": "nextjs",
                 "ecosystem": "npm",
@@ -628,7 +629,7 @@ def test_sc004_sc005_manifest_flags_are_binding():
     The full runner-level dispatch is covered by test_reproduce_only.py.
     """
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
 
     staleness = next(s for s in mani.steps if s.id == "staleness")
     assert staleness.reproduce_only is True, "staleness step must be reproduce_only=True (SC-004)"
@@ -642,7 +643,7 @@ def test_sc012_gate_message_is_static():
     """FR-012: staleness-gate message must be static, NOT {decision}, so the
     gate cannot compose an advisory from answers_to_persist (which is forbidden)."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     gate = next(s for s in mani.steps if s.id == "staleness-gate")
     assert "{decision}" not in (gate.message or ""), (
         "staleness-gate message must not use {decision} — FR-012 forbids "

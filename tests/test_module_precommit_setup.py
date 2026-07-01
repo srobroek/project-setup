@@ -25,8 +25,9 @@ from pathlib import Path
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
-_MODULE_REL = "modules/precommit-setup"
-_TEMPLATES = _PLUGIN_ROOT / _MODULE_REL / "templates"
+_MODULE_REL = "catalog/modules/precommit-setup"
+_MODULE_ROOT = _PKG / "catalog" / "modules" / "precommit-setup"
+_TEMPLATES = _MODULE_ROOT / "templates"
 
 
 def _load(name: str):
@@ -60,7 +61,7 @@ def _frozen_plan(tmp: Path) -> Path:
 
 
 def _run(project: Path, plan: Path, *, inspect: bool = False) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "write"]
     if inspect:
         cmd.append("--inspect")
@@ -70,7 +71,7 @@ def _run(project: Path, plan: Path, *, inspect: bool = False) -> subprocess.Comp
 
 def test_manifest_parses_and_is_valid():
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, mani.errors
     assert mani.id == "precommit-setup"
     assert mani.default_enabled is False

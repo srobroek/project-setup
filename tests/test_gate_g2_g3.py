@@ -19,7 +19,13 @@ import sys
 from pathlib import Path
 
 _RUNNER = Path(__file__).resolve().parents[1] / "skills" / "project-setup" / "runner"
-_MODULES = _RUNNER.parent / "modules"
+_BUNDLED_MODULES = _RUNNER.parent / "modules"
+_CATALOG_MODULES = _RUNNER.parents[2] / "catalog" / "modules"
+_ADDONS = {"apm-install","ci-github-actions","codex-config","env-example","github-repo","justfile-write","lang-go","lang-python","lang-rust","lang-ts","mcp-config","org-policy","package-add","precommit-setup","quality-hooks","readme-draft","speckit-bridge","stack-adr"}
+
+
+def _modules_dir(module_id: str) -> Path:
+    return _CATALOG_MODULES if module_id in _ADDONS else _BUNDLED_MODULES
 
 
 def _load(name: str):
@@ -40,9 +46,9 @@ run_gate_step = executor.run_gate_step
 
 
 def _manifest(module_id: str):
-    m = manifest.parse_manifest(_MODULES / module_id / "module.toml")
+    m = manifest.parse_manifest(_modules_dir(module_id) / module_id / "module.toml")
     assert not m.errors, [e.to_dict() for e in m.errors]
-    m._toml_path = _MODULES / module_id / "module.toml"
+    m._toml_path = _modules_dir(module_id) / module_id / "module.toml"
     return m
 
 
@@ -128,7 +134,7 @@ def test_g2_no_baseline_constant_in_module():
     # spec 018: standalone — apm-install must NOT carry a hardcoded _BASELINE_MCP
     # constant (the old srobroek baseline). Guards against its reintroduction.
     import importlib.util as iu
-    mpath = _MODULES / "apm-install" / "module.py"
+    mpath = _CATALOG_MODULES / "apm-install" / "module.py"
     spec = iu.spec_from_file_location("apm_install_mod", mpath)
     mod = iu.module_from_spec(spec)
     sys.modules["apm_install_mod"] = mod

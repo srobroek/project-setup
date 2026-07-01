@@ -24,7 +24,8 @@ from pathlib import Path
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
-_MODULE_REL = "modules/env-example"
+_MODULE_REL = "catalog/modules/env-example"
+_MODULE_ROOT = _PKG / "catalog" / "modules" / "env-example"
 
 
 def _load(name: str):
@@ -81,7 +82,7 @@ def _run(
     step: str = "write",
     inspect: bool = False,
 ) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", step]
     if inspect:
         cmd.append("--inspect")
@@ -96,7 +97,7 @@ def _run(
 def test_manifest_parses_and_is_valid():
     """Manifest must parse cleanly with the correct step shape."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, [e.to_dict() for e in mani.errors]
     assert mani.id == "env-example"
     assert mani.default_enabled is False

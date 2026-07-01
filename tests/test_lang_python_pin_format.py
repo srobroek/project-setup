@@ -20,7 +20,7 @@ import pytest
 
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
-_MODULE_DIR = _PLUGIN_ROOT / "modules" / "lang-python"
+_MODULE_DIR = _PKG / "catalog" / "modules" / "lang-python"
 
 
 def _load_module_py():

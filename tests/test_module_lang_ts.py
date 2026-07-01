@@ -25,7 +25,8 @@ from pathlib import Path
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
-_MODULE_REL = "modules/lang-ts"
+_MODULE_REL = "catalog/modules/lang-ts"
+_MODULE_ROOT = _PKG / "catalog" / "modules" / "lang-ts"
 
 
 def _load(name: str):
@@ -87,7 +88,7 @@ def _run(
     *,
     inspect: bool = False,
 ) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "write"]
     if inspect:
         cmd.append("--inspect")
@@ -101,7 +102,7 @@ def _run(
 
 def test_manifest_parses_and_is_valid():
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, mani.errors
     assert mani.id == "lang-ts"
     assert mani.default_enabled is False, "language overlays must be opt-in (default_enabled=false)"
@@ -378,7 +379,7 @@ def _load_module_inprocess():
             sys.modules[mod_key] = dmod
             dspec.loader.exec_module(dmod)
 
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     if "lang_ts_mod" in sys.modules:
         return sys.modules["lang_ts_mod"]
     mspec = importlib.util.spec_from_file_location("lang_ts_mod", module_py)
@@ -614,7 +615,7 @@ def test_sc006_pinned_package_json_is_deterministic(tmp_path):
 def test_013_manifest_no_errors():
     """spec 013 Phase 1: manifest parses with no errors (when predicate on declared ui_kit_id)."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, (
         "lang-ts manifest has errors after spec-013 Phase 1 changes: "
         + str(mani.errors)
@@ -624,7 +625,7 @@ def test_013_manifest_no_errors():
 def test_013_six_new_inputs_declared():
     """spec 013 Phase 1: all six new agent-decided inputs are declared."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     input_keys = {inp.key for inp in mani.inputs}
     for key in ("test_runner", "template_id", "ui_kit_id", "ui_kit_init_command", "runtime", "node_line"):
         assert key in input_keys, f"Expected declared input '{key}' in lang-ts manifest"
@@ -633,7 +634,7 @@ def test_013_six_new_inputs_declared():
 def test_013_step_order():
     """spec 013 Phase 1: step IDs are in the exact order mandated by FR-019."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert [s.id for s in mani.steps] == [
         "resolve",
         "pins",
@@ -648,7 +649,7 @@ def test_013_step_order():
 def test_013_ui_kit_init_step_fields():
     """spec 013 Phase 1: ui-kit-init gate step has correct kind, hardness, init_only, allow_flag, when."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     step = next((s for s in mani.steps if s.id == "ui-kit-init"), None)
     assert step is not None, "ui-kit-init step not found in manifest"
     assert step.kind == "gate", f"Expected kind=gate, got: {step.kind!r}"
@@ -665,7 +666,7 @@ def test_013_ui_kit_init_step_fields():
 def test_013_ui_kit_scaffold_step_is_python():
     """spec 013 Phase 1: ui-kit-scaffold step is kind=python."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     step = next((s for s in mani.steps if s.id == "ui-kit-scaffold"), None)
     assert step is not None, "ui-kit-scaffold step not found in manifest"
     assert step.kind == "python", f"Expected kind=python, got: {step.kind!r}"
@@ -772,7 +773,7 @@ def _run_step(
     inspect: bool = False,
 ) -> "subprocess.CompletedProcess":
     """Run an arbitrary step (write or ui-kit-scaffold) via uv run."""
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", step]
     if inspect:
         cmd.append("--inspect")
@@ -1248,7 +1249,7 @@ def _run_scaffold(
     plan: Path,
     stub_dir: Path | None = None,
 ) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "scaffold"]
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
     if stub_dir is not None:
@@ -1282,7 +1283,7 @@ exit 0
 def test_manifest_has_project_name_input():
     """manifest must declare a project_name input (required=true)."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     input_keys = {inp.key for inp in mani.inputs}
     assert "project_name" in input_keys, (
         f"project_name input missing from lang-ts module.toml; keys: {input_keys}"

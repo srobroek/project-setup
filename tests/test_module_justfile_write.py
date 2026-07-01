@@ -23,7 +23,8 @@ from pathlib import Path
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
-_MODULE_REL = "modules/justfile-write"
+_MODULE_REL = "catalog/modules/justfile-write"
+_MODULE_ROOT = _PKG / "catalog" / "modules" / "justfile-write"
 
 # Verbatim expected justfile content (must match module.py _JUSTFILE).
 # test:/build:/dev: use failing stubs (exit 1) so CI is never green-while-
@@ -85,7 +86,7 @@ def _frozen_plan(tmp: Path, use_just: bool = True, language: str = "") -> Path:
 
 
 def _run(project: Path, plan: Path, *, inspect: bool = False) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "write"]
     if inspect:
         cmd.append("--inspect")
@@ -95,7 +96,7 @@ def _run(project: Path, plan: Path, *, inspect: bool = False) -> subprocess.Comp
 
 def test_manifest_parses_and_is_valid():
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, mani.errors
     assert mani.id == "justfile-write"
     assert mani.default_enabled is False
@@ -189,7 +190,7 @@ def test_idempotent_second_run_skips(tmp_path):
 def test_manifest_has_language_input():
     """module.toml must declare a 'language' input with type=string, default=""."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, mani.errors
     lang_inputs = [i for i in mani.inputs if i.key == "language"]
     assert lang_inputs, "No 'language' input found in module.toml"

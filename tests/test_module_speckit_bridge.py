@@ -35,8 +35,9 @@ from pathlib import Path
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
-_MODULE_REL = "modules/speckit-bridge"
-_MODULE_PY = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+_MODULE_REL = "catalog/modules/speckit-bridge"
+_MODULE_ROOT = _PKG / "catalog" / "modules" / "speckit-bridge"
+_MODULE_PY = _MODULE_ROOT / "module.py"
 
 
 def _load(name: str):
@@ -89,7 +90,7 @@ def _run(
     inspect: bool = False,
     extra_env: dict | None = None,
 ) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "setup"]
     if inspect:
         cmd.append("--inspect")
@@ -156,7 +157,7 @@ def _make_uv_stub(bin_dir: Path, tool_install_exit: int = 0) -> Path:
 
 def test_manifest_parses_and_is_valid():
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, mani.errors
     assert mani.id == "speckit-bridge"
     assert mani.default_enabled is False

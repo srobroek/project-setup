@@ -32,7 +32,8 @@ from unittest import mock
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
-_MODULE_REL = "modules/package-add"
+_MODULE_REL = "catalog/modules/package-add"
+_MODULE_ROOT = _PKG / "catalog" / "modules" / "package-add"
 
 
 def _load(name: str, unique_prefix: str = "_pkgadd_res"):
@@ -53,7 +54,7 @@ def _load_module_py():
     if unique_name in sys.modules:
         return sys.modules[unique_name]
     spec = importlib.util.spec_from_file_location(
-        unique_name, _PLUGIN_ROOT / _MODULE_REL / "module.py"
+        unique_name, _MODULE_ROOT / "module.py"
     )
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
@@ -151,7 +152,7 @@ def _frozen_plan(
             "id": "lang-python",
             "version": "1.0.0",
             "reconcile": True,
-            "module_rel_root": "modules/lang-python",
+            "module_rel_root": "catalog/modules/lang-python",
             "answers": lang_python_answers,
             "steps": [],
         }
@@ -169,7 +170,7 @@ def _frozen_plan(
 
 
 def _run(project: Path, plan: Path, step: str = "add", *, inspect: bool = False) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", step]
     if inspect:
         cmd.append("--inspect")
@@ -184,7 +185,7 @@ def _run(project: Path, plan: Path, step: str = "add", *, inspect: bool = False)
 def test_sc007_manifest_step_order():
     """SC-007: step order is resolve/pins/manifest/add/workspace-edit-gate/workspace-edit."""
     manifest_mod = _load("manifest")
-    mani = manifest_mod.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest_mod.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, mani.errors
     step_ids = [s.id for s in mani.steps]
     assert step_ids == [
@@ -200,7 +201,7 @@ def test_sc007_manifest_step_order():
 def test_sc007_resolve_stack_input_declared():
     """SC-007: resolve_stack input is declared as bool with default=false."""
     manifest_mod = _load("manifest")
-    mani = manifest_mod.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest_mod.parse_manifest(_MODULE_ROOT / "module.toml")
     input_keys = {i.key: i for i in mani.inputs}
     assert "resolve_stack" in input_keys, f"resolve_stack not in inputs: {list(input_keys)}"
     rs = input_keys["resolve_stack"]
@@ -212,7 +213,7 @@ def test_sc007_resolve_stack_input_declared():
 def test_sc007_pins_gate_hard_allow_flag_init_only():
     """SC-007: pins gate is hard, allow_flag=allow-stack-write, init_only=True, when=resolve_stack."""
     manifest_mod = _load("manifest")
-    mani = manifest_mod.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest_mod.parse_manifest(_MODULE_ROOT / "module.toml")
     pins = next((s for s in mani.steps if s.id == "pins"), None)
     assert pins is not None, "pins step missing"
     assert pins.kind == "gate"
@@ -225,7 +226,7 @@ def test_sc007_pins_gate_hard_allow_flag_init_only():
 def test_sc007_workspace_edit_gate_soft_skip_flag():
     """SC-007: workspace-edit-gate is soft with skip_flag=no-workspace-manifest-edit."""
     manifest_mod = _load("manifest")
-    mani = manifest_mod.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest_mod.parse_manifest(_MODULE_ROOT / "module.toml")
     wg = next((s for s in mani.steps if s.id == "workspace-edit-gate"), None)
     assert wg is not None, "workspace-edit-gate step missing"
     assert wg.kind == "gate"
@@ -236,7 +237,7 @@ def test_sc007_workspace_edit_gate_soft_skip_flag():
 def test_sc007_resolve_step_has_when_and_steering():
     """SC-007: resolve agent step has when=resolve_stack==true and steering path."""
     manifest_mod = _load("manifest")
-    mani = manifest_mod.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest_mod.parse_manifest(_MODULE_ROOT / "module.toml")
     resolve = next((s for s in mani.steps if s.id == "resolve"), None)
     assert resolve is not None, "resolve step missing"
     assert resolve.kind == "agent"
@@ -247,7 +248,7 @@ def test_sc007_resolve_step_has_when_and_steering():
 def test_sc007_manifest_step_has_when():
     """SC-007: manifest python step has when=resolve_stack==true."""
     manifest_mod = _load("manifest")
-    mani = manifest_mod.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest_mod.parse_manifest(_MODULE_ROOT / "module.toml")
     manifest_step = next((s for s in mani.steps if s.id == "manifest"), None)
     assert manifest_step is not None, "manifest step missing"
     assert manifest_step.kind == "python"
@@ -257,7 +258,7 @@ def test_sc007_manifest_step_has_when():
 def test_sc007_manifest_parses_no_errors():
     """SC-007: manifest.toml parses with no errors."""
     manifest_mod = _load("manifest")
-    mani = manifest_mod.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest_mod.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, mani.errors
     assert mani.id == "package-add"
     assert mani.default_enabled is False
@@ -292,7 +293,7 @@ def test_sc003_resolve_stack_false_no_agent_step(tmp_path):
     # drops those steps from the effective plan. We check that the module.toml
     # correctly declares when="resolve_stack == true" so the runner drops them.
     manifest_mod = _load("manifest")
-    mani = manifest_mod.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest_mod.parse_manifest(_MODULE_ROOT / "module.toml")
 
     # The steps with when="resolve_stack == true" should all have that when clause
     resolve_stack_steps = {"resolve", "pins", "manifest"}
@@ -420,7 +421,7 @@ def test_sc001_manifest_writes_pyproject_with_sibling_pins(tmp_path):
     )
 
     # Run with stubbed verify_pins: all pins return PIN_VERIFIED
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     env = {
         **os.environ,
         "PLUGIN_ROOT": str(_PLUGIN_ROOT),
@@ -491,7 +492,7 @@ def test_sc001_manifest_content_deterministic(tmp_path):
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan_data))
 
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
 
     proc1 = subprocess.run(
@@ -547,7 +548,7 @@ def test_sc001_no_wall_clock_in_manifest(tmp_path):
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan_data))
 
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
     proc = subprocess.run(
         ["uv", "run", str(module_py), "--plan", str(plan_path), "--step", "manifest"],
@@ -597,7 +598,7 @@ def test_sc001_manifest_ts_writes_package_json(tmp_path):
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan_data))
 
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
     proc = subprocess.run(
         ["uv", "run", str(module_py), "--plan", str(plan_path), "--step", "manifest"],
@@ -631,7 +632,7 @@ def test_sc004_declined_pins_gate_semantics():
     A declined 'pins' gate sets gate_blocked=True → manifest, add, workspace-edit skipped.
     """
     manifest_mod = _load("manifest")
-    mani = manifest_mod.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest_mod.parse_manifest(_MODULE_ROOT / "module.toml")
     step_ids = [s.id for s in mani.steps]
 
     # pins must come BEFORE manifest and add
@@ -658,7 +659,7 @@ def test_sc005_declined_workspace_edit_gate_semantics():
     leaves dir+manifest intact — only workspace-edit is skipped.
     """
     manifest_mod = _load("manifest")
-    mani = manifest_mod.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest_mod.parse_manifest(_MODULE_ROOT / "module.toml")
     step_ids = [s.id for s in mani.steps]
 
     add_idx = step_ids.index("add")
@@ -709,7 +710,7 @@ def test_sc005_skip_flag_ci_behavior(tmp_path):
     }
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan_data))
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
 
     # Run manifest + add steps (simulating the workspace-edit-gate was soft-declined)
@@ -762,7 +763,7 @@ def test_sc006_workspace_edit_idempotent(tmp_path):
     }
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan_data))
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
 
     # Run workspace-edit twice
@@ -814,7 +815,7 @@ def test_sc006_workspace_edit_idempotent_go(tmp_path):
     }
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan_data))
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
 
     for i in range(2):
@@ -946,7 +947,7 @@ def test_manifest_inspect_writes_nothing(tmp_path):
     }
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan_data))
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
     proc = subprocess.run(
         ["uv", "run", str(module_py), "--plan", str(plan_path), "--step", "manifest", "--inspect"],
@@ -992,7 +993,7 @@ def test_workspace_edit_inspect_writes_nothing(tmp_path):
     }
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan_data))
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
     original = root_pyproject.read_text()
 
@@ -1041,7 +1042,7 @@ def test_manifest_render_go_stub(tmp_path):
     }
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan_data))
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
     proc = subprocess.run(
         ["uv", "run", str(module_py), "--plan", str(plan_path), "--step", "manifest"],
@@ -1085,7 +1086,7 @@ def test_manifest_render_rust_stub(tmp_path):
     }
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan_data))
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
     proc = subprocess.run(
         ["uv", "run", str(module_py), "--plan", str(plan_path), "--step", "manifest"],

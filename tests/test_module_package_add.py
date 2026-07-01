@@ -25,7 +25,8 @@ from pathlib import Path
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
-_MODULE_REL = "modules/package-add"
+_MODULE_REL = "catalog/modules/package-add"
+_MODULE_ROOT = _PKG / "catalog" / "modules" / "package-add"
 
 
 def _load(name: str):
@@ -70,7 +71,7 @@ def _frozen_plan(
 
 
 def _run(project: Path, plan: Path, *, inspect: bool = False) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "add"]
     if inspect:
         cmd.append("--inspect")
@@ -98,7 +99,7 @@ def _assert_no_traversal_artifacts(project: Path, bad_name: str) -> None:
 
 def test_manifest_parses_and_is_valid():
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, mani.errors
     assert mani.id == "package-add"
     assert mani.default_enabled is False
@@ -295,7 +296,7 @@ def _frozen_plan_manifest(
 
 
 def _run_manifest(project: Path, plan: Path) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "manifest"]
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
     return subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(project))
@@ -408,7 +409,7 @@ def _frozen_plan_workspace_edit(
 
 
 def _run_workspace_edit(project: Path, plan: Path) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "workspace-edit"]
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project)}
     return subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(project))

@@ -21,7 +21,13 @@ from pathlib import Path
 import pytest
 
 _RUNNER = Path(__file__).resolve().parents[1] / "skills" / "project-setup" / "runner"
-_MODULES = _RUNNER.parent / "modules"
+_BUNDLED_MODULES = _RUNNER.parent / "modules"
+_CATALOG_MODULES = _RUNNER.parents[2] / "catalog" / "modules"
+_ADDONS = {"apm-install","ci-github-actions","codex-config","env-example","github-repo","justfile-write","lang-go","lang-python","lang-rust","lang-ts","mcp-config","org-policy","package-add","precommit-setup","quality-hooks","readme-draft","speckit-bridge","stack-adr"}
+
+
+def _modules_dir(module_id: str) -> Path:
+    return _CATALOG_MODULES if module_id in _ADDONS else _BUNDLED_MODULES
 
 
 def _load(name: str):
@@ -41,7 +47,7 @@ plan_mod = _load("plan")
 
 @pytest.mark.parametrize("module_id", ["lang-python", "lang-ts"])
 def test_g6_pin_gate_enrichment(module_id):
-    m = manifest.parse_manifest(_MODULES / module_id / "module.toml")
+    m = manifest.parse_manifest(_modules_dir(module_id) / module_id / "module.toml")
     assert not m.errors, [e.to_dict() for e in m.errors]
     # lang-ts also has the G4 `run-generator` gate (Phase 5); select the pins gate.
     pins = [s for s in m.steps if s.kind == "gate" and s.id == "pins"]
@@ -58,8 +64,8 @@ def test_g6_pin_gate_enrichment(module_id):
 
 @pytest.mark.parametrize("module_id", ["lang-python", "lang-ts"])
 def test_g6_init_only_serialized_into_frozen_plan(module_id):
-    m = manifest.parse_manifest(_MODULES / module_id / "module.toml")
-    m._toml_path = _MODULES / module_id / "module.toml"
+    m = manifest.parse_manifest(_modules_dir(module_id) / module_id / "module.toml")
+    m._toml_path = _modules_dir(module_id) / module_id / "module.toml"
     plan = plan_mod.build_plan(
         [m],
         resolved_answers={module_id: {"framework": "fastapi@0.115.0"}},
