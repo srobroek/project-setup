@@ -22,6 +22,6 @@
   "catalog/modules/precommit-setup": "1.0.1",
   "catalog/modules/quality-hooks": "1.1.1",
   "catalog/modules/readme-draft": "1.1.0",
-  "catalog/modules/speckit-bridge": "1.0.1",
+  "catalog/modules/speckit-bridge": "1.1.0",
   "catalog/modules/stack-adr": "1.2.0"
 }

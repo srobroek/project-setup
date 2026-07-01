@@ -8,6 +8,14 @@
 * thin bundled skill to 6 core modules, move 18 addons to catalog/modules/ ([b0ea14b](https://github.com/srobroek/project-setup/commit/b0ea14ba5450b99f9594d7b7adbd1d5ace9b096c))
 * thin the bundled skill to 6 core modules; fetch the rest from the catalog ([d26f9d2](https://github.com/srobroek/project-setup/commit/d26f9d24fc33e52de643ebb73acc32a650ae7967))
 
+## [1.1.0](https://github.com/srobroek/project-setup/compare/speckit-bridge-v1.0.1...speckit-bridge-v1.1.0) (2026-07-01)
+
+
+### Features
+
+* thin bundled skill to 6 core modules, move 18 addons to catalog/modules/ ([b0ea14b](https://github.com/srobroek/project-setup/commit/b0ea14ba5450b99f9594d7b7adbd1d5ace9b096c))
+* thin the bundled skill to 6 core modules; fetch the rest from the catalog ([d26f9d2](https://github.com/srobroek/project-setup/commit/d26f9d24fc33e52de643ebb73acc32a650ae7967))
+
 ## [1.0.1](https://github.com/srobroek/project-setup/compare/speckit-bridge-v1.0.0...speckit-bridge-v1.0.1) (2026-06-30)
 
 
