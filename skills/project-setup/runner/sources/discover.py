@@ -236,8 +236,20 @@ def _scan_root(
 ) -> list[DiscoveredModule]:
     """Return all ``DiscoveredModule`` instances found under *entry.path*.
 
-    Walks exactly one level deep (``<root>/<name>/module.toml``).  Malformed
-    manifests are logged to *parse_errors* and skipped.
+    Two shapes are supported:
+
+    1. **Single-module-dir root**: if ``<root>/module.toml`` exists, *root*
+       itself is a module directory.  Exactly one :class:`DiscoveredModule` is
+       returned with ``root_path == root``.  Child directories (e.g.
+       ``templates/``) are NOT scanned — a module dir is a leaf.  This shape
+       arises when a fetched source locator points directly at a single module
+       directory (e.g. ``org/repo/modules/lang-rust``).
+
+    2. **Container root**: if ``<root>/module.toml`` does NOT exist, *root* is
+       treated as a container of module directories.  Walks exactly one level
+       deep (``<root>/<name>/module.toml``).
+
+    Malformed manifests are logged to *parse_errors* and skipped.
     """
     modules: list[DiscoveredModule] = []
     root = entry.path
@@ -245,6 +257,20 @@ def _scan_root(
     if not root.is_dir():
         return modules
 
+    # Shape 1: root is itself a single module directory.
+    direct_toml = root / "module.toml"
+    if direct_toml.is_file():
+        id_, _default_enabled = _read_module_id_and_default_enabled(direct_toml, parse_errors)
+        if id_ is not None:
+            modules.append(DiscoveredModule(
+                id=id_,
+                root_path=root,
+                root_kind=entry.kind,
+                manifest_path=direct_toml,
+            ))
+        return modules
+
+    # Shape 2: root is a container — walk one level deep.
     for candidate in sorted(root.iterdir()):  # sorted for determinism
         if not candidate.is_dir():
             continue
