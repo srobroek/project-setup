@@ -23,5 +23,5 @@
   "catalog/modules/quality-hooks": "1.1.1",
   "catalog/modules/readme-draft": "1.0.2",
   "catalog/modules/speckit-bridge": "1.0.1",
-  "catalog/modules/stack-adr": "1.1.1"
+  "catalog/modules/stack-adr": "1.2.0"
 }
