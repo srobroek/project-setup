@@ -28,7 +28,8 @@ from pathlib import Path
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
-_MODULE_REL = "modules/lang-rust"
+_MODULE_REL = "catalog/modules/lang-rust"
+_MODULE_ROOT = _PKG / "catalog" / "modules" / "lang-rust"
 
 
 def _load(name: str):
@@ -90,7 +91,7 @@ def _run(
     step: str = "write",
     inspect: bool = False,
 ) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", step]
     if inspect:
         cmd.append("--inspect")
@@ -104,7 +105,7 @@ def _run(
 
 def test_manifest_parses_and_is_valid():
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, mani.errors
     assert mani.id == "lang-rust"
     assert mani.default_enabled is False, "language overlays must be opt-in (default_enabled=false)"
@@ -444,7 +445,7 @@ def test_project_name_not_dir_name_without_answer(tmp_path):
 def test_manifest_has_project_name_input():
     """manifest must declare a project_name input (required=true)."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     input_keys = {inp.key for inp in mani.inputs}
     assert "project_name" in input_keys, (
         f"project_name input missing from lang-rust module.toml; keys: {input_keys}"

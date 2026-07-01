@@ -29,7 +29,8 @@ from pathlib import Path
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
-_MODULE_REL = "modules/mcp-config"
+_MODULE_REL = "catalog/modules/mcp-config"
+_MODULE_ROOT = _PKG / "catalog" / "modules" / "mcp-config"
 
 
 def _load(name: str):
@@ -97,7 +98,7 @@ def _run(
     step: str = "write",
     inspect: bool = False,
 ) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", step]
     if inspect:
         cmd.append("--inspect")
@@ -112,7 +113,7 @@ def _run(
 def test_manifest_parses_and_is_valid():
     """Manifest must parse cleanly with correct step shape, gate config, and inputs."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, [e.to_dict() for e in mani.errors]
 
     assert mani.id == "mcp-config"
@@ -369,7 +370,7 @@ def test_malformed_existing_mcp_json_not_clobbered(tmp_path):
 
 def test_no_wall_clock_in_module_py():
     """module.py must not import datetime/time or call wall-clock functions."""
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     source = module_py.read_text(encoding="utf-8")
 
     for bad in ("import datetime", "import time", "from datetime", "from time"):
@@ -394,7 +395,7 @@ def test_no_wall_clock_in_module_py():
 
 def test_no_srobroek_runtime_literal_in_module_py():
     """module.py must not contain 'srobroek' in any runtime constant or logic."""
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     source = module_py.read_text(encoding="utf-8")
 
     # Walk the AST; check string constants (not comments/docstrings from the module

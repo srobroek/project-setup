@@ -26,10 +26,12 @@ After install the `/project-setup` skill is available in any Claude Code session
 
 ## Add-on modules
 
-The `skills/project-setup/modules/` directory contains the 24 stdlib modules
-shipped with the core skill. Each module is independently versioned and tagged
-(`<name>-v<version>`). External add-on catalogs can extend the module set; see
-`skills/project-setup/addons/catalog.json` for the bundled catalog.
+The skill ships 6 core modules bundled in `skills/project-setup/modules/`
+(core-identity, dirs-scaffold, gitignore-generate, license-write, agents-md,
+git-init). The remaining 18 addon modules live in `catalog/modules/` — they are
+independently versioned, tagged (`<name>-v<version>`), and fetched on demand via
+the addon catalog. See `skills/project-setup/addons/catalog.json` for the
+first-party catalog.
 
 For authoring guidance — writing new modules, custom steps, agent-steered
 patterns — see [AUTHORING.md](skills/project-setup/examples/AUTHORING.md).

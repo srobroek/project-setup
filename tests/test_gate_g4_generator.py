@@ -23,7 +23,8 @@ import sys
 from pathlib import Path
 
 _RUNNER = Path(__file__).resolve().parents[1] / "skills" / "project-setup" / "runner"
-_MODULES = _RUNNER.parent / "modules"
+_BUNDLED_MODULES = _RUNNER.parent / "modules"
+_CATALOG_MODULES = _RUNNER.parents[2] / "catalog" / "modules"
 _PLUGIN_ROOT = _RUNNER.parent
 
 
@@ -47,7 +48,7 @@ run_gate_step = executor.run_gate_step
 # Manifest: the G4 gate sits between write and scaffold, soft + skip_flag       #
 # --------------------------------------------------------------------------- #
 def test_lang_ts_step_order_and_g4_gate():
-    m = manifest.parse_manifest(_MODULES / "lang-ts" / "module.toml")
+    m = manifest.parse_manifest(_CATALOG_MODULES / "lang-ts" / "module.toml")
     assert not m.errors, [e.to_dict() for e in m.errors]
     order = [(s.id, s.kind) for s in m.steps]
     # Full step order as of spec 013 Phase 1 (FR-019).
@@ -90,7 +91,7 @@ def test_g4_ci_proceeds_by_default_skips_with_flag():
 class _PlanModule:
     def __init__(self, steps):
         self.id = "lang-ts"
-        self.module_rel_root = "modules/lang-ts"
+        self.module_rel_root = "catalog/modules/lang-ts"
         self.steps = steps
 
 
@@ -207,7 +208,7 @@ def test_scaffold_step_runs_and_remerges_pins(tmp_path):
         "schema_version": 1, "mode": "init", "order": ["lang-ts"],
         "modules": {"lang-ts": {
             "id": "lang-ts", "version": "1.0.0", "reconcile": True,
-            "module_rel_root": "modules/lang-ts",
+            "module_rel_root": "catalog/modules/lang-ts",
             "answers": {"package_manager": "bun", "framework": "plain",
                         "pinned_deps": ["vue@3.5.13"], "dev_deps": [],
                         "package_manager_pin": "bun@1.1.38"},
@@ -217,7 +218,7 @@ def test_scaffold_step_runs_and_remerges_pins(tmp_path):
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan))
 
-    module_py = _PLUGIN_ROOT / "modules" / "lang-ts" / "module.py"
+    module_py = _CATALOG_MODULES / "lang-ts" / "module.py"
     env = {**os.environ, "PLUGIN_ROOT": str(_PLUGIN_ROOT), "PROJECT_DIR": str(project),
            "PATH": f"{stub_dir}:{os.environ.get('PATH', '')}"}
     proc = subprocess.run(

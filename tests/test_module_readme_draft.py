@@ -24,7 +24,8 @@ from pathlib import Path
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
-_MODULE_REL = "modules/readme-draft"
+_MODULE_REL = "catalog/modules/readme-draft"
+_MODULE_ROOT = _PKG / "catalog" / "modules" / "readme-draft"
 
 
 def _load(name: str):
@@ -84,7 +85,7 @@ def _run(
     step: str = "write",
     inspect: bool = False,
 ) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", step]
     if inspect:
         cmd.append("--inspect")
@@ -99,7 +100,7 @@ def _run(
 def test_sc004_manifest_parses_and_is_valid():
     """SC-004: manifest must parse cleanly with correct step shape and gate config."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, [e.to_dict() for e in mani.errors]
     assert mani.id == "readme-draft"
     assert mani.default_enabled is False
@@ -244,7 +245,7 @@ def test_empty_readme_body_no_write_warning(tmp_path):
 
 def test_no_wall_clock_in_module_py():
     """module.py must not import datetime/time or call wall-clock functions."""
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     source = module_py.read_text(encoding="utf-8")
 
     # Check for wall-clock imports at source level

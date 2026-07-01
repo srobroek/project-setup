@@ -24,39 +24,6 @@
         }
       ]
     },
-    "skills/project-setup/modules/apm-install": {
-      "release-type": "simple",
-      "component": "apm-install",
-      "changelog-path": "CHANGELOG.md",
-      "extra-files": [
-        {
-          "type": "generic",
-          "path": "module.toml"
-        }
-      ]
-    },
-    "skills/project-setup/modules/ci-github-actions": {
-      "release-type": "simple",
-      "component": "ci-github-actions",
-      "changelog-path": "CHANGELOG.md",
-      "extra-files": [
-        {
-          "type": "generic",
-          "path": "module.toml"
-        }
-      ]
-    },
-    "skills/project-setup/modules/codex-config": {
-      "release-type": "simple",
-      "component": "codex-config",
-      "changelog-path": "CHANGELOG.md",
-      "extra-files": [
-        {
-          "type": "generic",
-          "path": "module.toml"
-        }
-      ]
-    },
     "skills/project-setup/modules/core-identity": {
       "release-type": "simple",
       "component": "core-identity",
@@ -79,31 +46,9 @@
         }
       ]
     },
-    "skills/project-setup/modules/env-example": {
-      "release-type": "simple",
-      "component": "env-example",
-      "changelog-path": "CHANGELOG.md",
-      "extra-files": [
-        {
-          "type": "generic",
-          "path": "module.toml"
-        }
-      ]
-    },
     "skills/project-setup/modules/git-init": {
       "release-type": "simple",
       "component": "git-init",
-      "changelog-path": "CHANGELOG.md",
-      "extra-files": [
-        {
-          "type": "generic",
-          "path": "module.toml"
-        }
-      ]
-    },
-    "skills/project-setup/modules/github-repo": {
-      "release-type": "simple",
-      "component": "github-repo",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
@@ -123,61 +68,6 @@
         }
       ]
     },
-    "skills/project-setup/modules/justfile-write": {
-      "release-type": "simple",
-      "component": "justfile-write",
-      "changelog-path": "CHANGELOG.md",
-      "extra-files": [
-        {
-          "type": "generic",
-          "path": "module.toml"
-        }
-      ]
-    },
-    "skills/project-setup/modules/lang-go": {
-      "release-type": "simple",
-      "component": "lang-go",
-      "changelog-path": "CHANGELOG.md",
-      "extra-files": [
-        {
-          "type": "generic",
-          "path": "module.toml"
-        }
-      ]
-    },
-    "skills/project-setup/modules/lang-python": {
-      "release-type": "simple",
-      "component": "lang-python",
-      "changelog-path": "CHANGELOG.md",
-      "extra-files": [
-        {
-          "type": "generic",
-          "path": "module.toml"
-        }
-      ]
-    },
-    "skills/project-setup/modules/lang-rust": {
-      "release-type": "simple",
-      "component": "lang-rust",
-      "changelog-path": "CHANGELOG.md",
-      "extra-files": [
-        {
-          "type": "generic",
-          "path": "module.toml"
-        }
-      ]
-    },
-    "skills/project-setup/modules/lang-ts": {
-      "release-type": "simple",
-      "component": "lang-ts",
-      "changelog-path": "CHANGELOG.md",
-      "extra-files": [
-        {
-          "type": "generic",
-          "path": "module.toml"
-        }
-      ]
-    },
     "skills/project-setup/modules/license-write": {
       "release-type": "simple",
       "component": "license-write",
@@ -189,7 +79,117 @@
         }
       ]
     },
-    "skills/project-setup/modules/mcp-config": {
+    "catalog/modules/apm-install": {
+      "release-type": "simple",
+      "component": "apm-install",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "module.toml"
+        }
+      ]
+    },
+    "catalog/modules/ci-github-actions": {
+      "release-type": "simple",
+      "component": "ci-github-actions",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "module.toml"
+        }
+      ]
+    },
+    "catalog/modules/codex-config": {
+      "release-type": "simple",
+      "component": "codex-config",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "module.toml"
+        }
+      ]
+    },
+    "catalog/modules/env-example": {
+      "release-type": "simple",
+      "component": "env-example",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "module.toml"
+        }
+      ]
+    },
+    "catalog/modules/github-repo": {
+      "release-type": "simple",
+      "component": "github-repo",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "module.toml"
+        }
+      ]
+    },
+    "catalog/modules/justfile-write": {
+      "release-type": "simple",
+      "component": "justfile-write",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "module.toml"
+        }
+      ]
+    },
+    "catalog/modules/lang-go": {
+      "release-type": "simple",
+      "component": "lang-go",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "module.toml"
+        }
+      ]
+    },
+    "catalog/modules/lang-python": {
+      "release-type": "simple",
+      "component": "lang-python",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "module.toml"
+        }
+      ]
+    },
+    "catalog/modules/lang-rust": {
+      "release-type": "simple",
+      "component": "lang-rust",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "module.toml"
+        }
+      ]
+    },
+    "catalog/modules/lang-ts": {
+      "release-type": "simple",
+      "component": "lang-ts",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "module.toml"
+        }
+      ]
+    },
+    "catalog/modules/mcp-config": {
       "release-type": "simple",
       "component": "mcp-config",
       "changelog-path": "CHANGELOG.md",
@@ -200,7 +200,7 @@
         }
       ]
     },
-    "skills/project-setup/modules/org-policy": {
+    "catalog/modules/org-policy": {
       "release-type": "simple",
       "component": "org-policy",
       "changelog-path": "CHANGELOG.md",
@@ -211,7 +211,7 @@
         }
       ]
     },
-    "skills/project-setup/modules/package-add": {
+    "catalog/modules/package-add": {
       "release-type": "simple",
       "component": "package-add",
       "changelog-path": "CHANGELOG.md",
@@ -222,7 +222,7 @@
         }
       ]
     },
-    "skills/project-setup/modules/precommit-setup": {
+    "catalog/modules/precommit-setup": {
       "release-type": "simple",
       "component": "precommit-setup",
       "changelog-path": "CHANGELOG.md",
@@ -233,7 +233,7 @@
         }
       ]
     },
-    "skills/project-setup/modules/quality-hooks": {
+    "catalog/modules/quality-hooks": {
       "release-type": "simple",
       "component": "quality-hooks",
       "changelog-path": "CHANGELOG.md",
@@ -244,7 +244,7 @@
         }
       ]
     },
-    "skills/project-setup/modules/readme-draft": {
+    "catalog/modules/readme-draft": {
       "release-type": "simple",
       "component": "readme-draft",
       "changelog-path": "CHANGELOG.md",
@@ -255,7 +255,7 @@
         }
       ]
     },
-    "skills/project-setup/modules/speckit-bridge": {
+    "catalog/modules/speckit-bridge": {
       "release-type": "simple",
       "component": "speckit-bridge",
       "changelog-path": "CHANGELOG.md",
@@ -266,7 +266,7 @@
         }
       ]
     },
-    "skills/project-setup/modules/stack-adr": {
+    "catalog/modules/stack-adr": {
       "release-type": "simple",
       "component": "stack-adr",
       "changelog-path": "CHANGELOG.md",

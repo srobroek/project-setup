@@ -31,7 +31,8 @@ from pathlib import Path
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
-_MODULE_REL = "modules/lang-python"
+_MODULE_REL = "catalog/modules/lang-python"
+_MODULE_ROOT = _PKG / "catalog" / "modules" / "lang-python"
 
 
 def _load(name: str):
@@ -98,7 +99,7 @@ def _run(
     *,
     inspect: bool = False,
 ) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "write"]
     if inspect:
         cmd.append("--inspect")
@@ -112,7 +113,7 @@ def _run(
 
 def test_manifest_parses_and_is_valid():
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, mani.errors
     assert mani.id == "lang-python"
     assert mani.default_enabled is False, "language overlays must be opt-in (default_enabled=false)"
@@ -363,7 +364,7 @@ def _load_module_inprocess():
             sys.modules[mod_key] = dmod
             dspec.loader.exec_module(dmod)
 
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     if "lang_python_mod" in sys.modules:
         return sys.modules["lang_python_mod"]
     mspec = importlib.util.spec_from_file_location("lang_python_mod", module_py)
@@ -587,7 +588,7 @@ def test_sc001_verified_pins_written_in_pyproject(tmp_path):
 
 def test_sc005_no_unpinned_uv_add_in_source():
     """SC-005: the old unpinned 'uv add --dev ruff pytest' must not appear in module.py."""
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     source = module_py.read_text(encoding="utf-8")
     assert '"ruff", "pytest"' not in source and \
            '"ruff pytest"' not in source and \

@@ -31,8 +31,9 @@ from pathlib import Path
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
-_MODULE_REL = "modules/ci-github-actions"
-_MODULE_PY = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+_MODULE_REL = "catalog/modules/ci-github-actions"
+_MODULE_ROOT = _PKG / "catalog" / "modules" / "ci-github-actions"
+_MODULE_PY = _MODULE_ROOT / "module.py"
 
 
 # --------------------------------------------------------------------------- #
@@ -101,7 +102,7 @@ def _frozen_plan(
             "id": "lang-python",
             "version": "1.0.0",
             "reconcile": True,
-            "module_rel_root": "modules/lang-python",
+            "module_rel_root": "catalog/modules/lang-python",
             "answers": lang_python_answers,
             "steps": [],
         }
@@ -112,7 +113,7 @@ def _frozen_plan(
             "id": "lang-ts",
             "version": "1.0.0",
             "reconcile": True,
-            "module_rel_root": "modules/lang-ts",
+            "module_rel_root": "catalog/modules/lang-ts",
             "answers": lang_ts_answers,
             "steps": [],
         }
@@ -173,13 +174,13 @@ def _stub_package_json(project: Path, scripts: list[str] | None = None) -> None:
 
 def test_manifest_parses_with_no_errors():
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, mani.errors
 
 
 def test_manifest_module_flags():
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert mani.id == "ci-github-actions"
     assert mani.default_enabled is False, "ci-github-actions must be opt-in (default_enabled=false)"
     assert mani.reconcile is True, "ci-github-actions must reconcile=true"
@@ -187,7 +188,7 @@ def test_manifest_module_flags():
 
 def test_manifest_step_order():
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     step_ids = [s.id for s in mani.steps]
     assert step_ids == ["resolve", "ci-review", "write"], (
         f"Expected step order [resolve, ci-review, write], got {step_ids}"
@@ -197,7 +198,7 @@ def test_manifest_step_order():
 def test_manifest_gate_flags():
     """SC-004: gate hardness=hard, allow_flag=allow-ci-write, init_only=True."""
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     gate = next(s for s in mani.steps if s.id == "ci-review")
     assert gate.kind == "gate"
     assert gate.hardness == "hard", f"gate hardness must be 'hard', got {gate.hardness!r}"

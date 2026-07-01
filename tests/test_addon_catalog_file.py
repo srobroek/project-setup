@@ -305,18 +305,30 @@ class TestClaudePluginRootFallback:
         # Verify that at least one patched module now uses the `or os.environ.get("CLAUDE_PLUGIN_ROOT")` pattern.
         import ast
 
-        # Check a representative set of patched modules.
+        # Core modules live at skills/project-setup/modules/<id>/
+        # Addon modules live at catalog/modules/<id>/
+        _PKG = _SKILL_DIR.parent.parent  # repo root
+        _CATALOG_MODULES = _PKG / "catalog" / "modules"
+        _BUNDLED_MODULES = _SKILL_DIR / "modules"
+
+        CORE_MODULES = {"core-identity", "dirs-scaffold", "gitignore-generate",
+                        "license-write", "agents-md", "git-init"}
+
+        # Check a representative set of patched modules (mix of core + addon).
         patched_modules = [
             "core-identity", "lang-python", "github-repo", "codex-config",
             "speckit-bridge", "apm-install", "justfile-write", "ci-github-actions",
         ]
-        modules_dir = _SKILL_DIR / "modules"
         for mod_id in patched_modules:
-            source = (modules_dir / mod_id / "module.py").read_text(encoding="utf-8")
+            if mod_id in CORE_MODULES:
+                module_py = _BUNDLED_MODULES / mod_id / "module.py"
+            else:
+                module_py = _CATALOG_MODULES / mod_id / "module.py"
+            source = module_py.read_text(encoding="utf-8")
             assert 'os.environ.get("CLAUDE_PLUGIN_ROOT")' in source, (
-                f"modules/{mod_id}/module.py missing CLAUDE_PLUGIN_ROOT fallback"
+                f"{module_py.relative_to(_PKG)} missing CLAUDE_PLUGIN_ROOT fallback"
             )
             # Ensure PLUGIN_ROOT is still checked first (the `or` pattern).
             assert 'os.environ.get("PLUGIN_ROOT") or os.environ.get("CLAUDE_PLUGIN_ROOT")' in source, (
-                f"modules/{mod_id}/module.py must keep PLUGIN_ROOT as primary with CLAUDE_PLUGIN_ROOT as fallback"
+                f"{module_py.relative_to(_PKG)} must keep PLUGIN_ROOT as primary with CLAUDE_PLUGIN_ROOT as fallback"
             )

@@ -30,7 +30,8 @@ from pathlib import Path
 _PKG = Path(__file__).resolve().parents[1]
 _PLUGIN_ROOT = _PKG / "skills" / "project-setup"
 _RUNNER = _PLUGIN_ROOT / "runner"
-_MODULE_REL = "modules/apm-install"
+_MODULE_REL = "catalog/modules/apm-install"
+_MODULE_ROOT = _PKG / "catalog" / "modules" / "apm-install"
 
 
 def _load(name: str):
@@ -74,7 +75,7 @@ def _frozen_plan(
 
 
 def _run(project: Path, plan: Path, *, inspect: bool = False) -> subprocess.CompletedProcess:
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     cmd = ["uv", "run", str(module_py), "--plan", str(plan), "--step", "install"]
     if inspect:
         cmd.append("--inspect")
@@ -111,7 +112,7 @@ def _stub_apm(bin_dir: Path) -> Path:
 
 def test_manifest_parses_and_is_valid():
     manifest = _load("manifest")
-    mani = manifest.parse_manifest(_PLUGIN_ROOT / _MODULE_REL / "module.toml")
+    mani = manifest.parse_manifest(_MODULE_ROOT / "module.toml")
     assert not mani.errors, mani.errors
     assert mani.id == "apm-install"
     assert mani.default_enabled is False
@@ -268,7 +269,7 @@ def test_empty_packages_is_noop(tmp_path, monkeypatch):
 
 def test_no_srobroek_in_module(tmp_path):
     """FR-014/SC-001: 'srobroek' must not appear in module.py runtime source."""
-    module_py = _PLUGIN_ROOT / _MODULE_REL / "module.py"
+    module_py = _MODULE_ROOT / "module.py"
     source = module_py.read_text()
     assert "srobroek" not in source, (
         "Found 'srobroek' in module.py — all srobroek references must be removed (FR-003/FR-014)"

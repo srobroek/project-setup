@@ -288,12 +288,21 @@ version, description, reconcile), `[order]` (requires/after/before — no priori
 
 ## The bundled module set
 
+The skill ships with only 6 core modules (always bundled, in `skills/project-setup/modules/`):
+
 - **Base (always enabled):** core-identity, dirs-scaffold, gitignore-generate,
   license-write, agents-md, git-init.  These run on every project; they cannot
   be deselected.
-- **Optional (opt in):** apm-install, codex-config, github-repo, justfile-write,
-  precommit-setup, quality-hooks, lang-ts, lang-python, lang-go, lang-rust,
-  speckit-bridge, package-add.
+
+All other modules are **addon modules** fetched from the addon catalog at
+`catalog/modules/` (in this repo) and are never bundled in the skill payload.
+They are still selectable during setup — the runner fetches them on demand from
+the catalog locator (`srobroek/project-setup/catalog/modules/<name>`).
+
+- **Addon (opt in, fetched):** apm-install, ci-github-actions, codex-config,
+  env-example, github-repo, justfile-write, lang-go, lang-python, lang-rust,
+  lang-ts, mcp-config, org-policy, package-add, precommit-setup, quality-hooks,
+  readme-draft, speckit-bridge, stack-adr.
 
 ## Scope: this skill SCAFFOLDS — it does NOT build the product
 
