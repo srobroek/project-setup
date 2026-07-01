@@ -7,7 +7,7 @@ author = "Sjors Robroek"
 [module]
 id = "org-policy"
 name = "Org-convention overlay"
-version = "1.0.1"  # x-release-please-version
+version = "1.1.0"  # x-release-please-version
 description = "Apply mandatory org conventions to a scaffolded project. Reads a pinned org policy manifest (from the fetched org source), maps frozen answers against org policy, and applies only the org-mandated overrides. Default-disabled; enable when an org source is pinned in sources.toml."
 default_enabled = false
 reconcile = false
