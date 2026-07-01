@@ -297,7 +297,8 @@ The skill ships with only 6 core modules (always bundled, in `skills/project-set
 All other modules are **addon modules** fetched from the addon catalog at
 `catalog/modules/` (in this repo) and are never bundled in the skill payload.
 They are still selectable during setup — the runner fetches them on demand from
-the catalog locator (`srobroek/project-setup/catalog/modules/<name>`).
+the catalog locator (`srobroek/project-setup/catalog/modules/<name>`), pinned to
+each addon's own release tag (`<name>-vX.Y.Z`).
 
 - **Addon (opt in, fetched):** apm-install, ci-github-actions, codex-config,
   env-example, github-repo, justfile-write, lang-go, lang-python, lang-rust,
