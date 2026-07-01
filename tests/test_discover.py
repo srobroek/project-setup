@@ -166,6 +166,91 @@ class TestBasicDiscovery:
 
 
 # ---------------------------------------------------------------------------
+# Single-module-directory roots (a root that IS a module, not a container).
+# This shape arises when a fetched addon source locator points directly at one
+# module dir (e.g. org/repo/skills/.../modules/lang-rust) rather than at a
+# modules/ container. Discovery must recognise <root>/module.toml and treat the
+# root itself as the one module. Without this the whole addon-catalog fetch path
+# discovers nothing (the modules were fetched but never seen).
+# ---------------------------------------------------------------------------
+
+class TestSingleModuleDirRoot:
+    def test_root_is_a_single_module_dir(self, tmp_path):
+        """A root whose own dir has module.toml resolves to exactly that module."""
+        root = tmp_path / "lang-rust"
+        root.mkdir()
+        (root / "module.toml").write_text(
+            _MINIMAL_TOML.format(id="lang-rust", name="Lang Rust")
+        )
+
+        entries = [_root_entry(root, RootKind.FETCHED)]
+        modules, report = discover_modules(
+            entries, bundled_root=root / "__nonexistent__"
+        )
+
+        assert set(modules) == {"lang-rust"}
+        assert modules["lang-rust"].root_path == root  # root ITSELF, not a child
+        assert modules["lang-rust"].manifest_path == root / "module.toml"
+        assert len(report.hard_errors) == 0
+
+    def test_single_module_dir_does_not_recurse_into_child_dirs(self, tmp_path):
+        """A module dir is a leaf: sibling child dirs (e.g. templates/) are not
+        scanned as nested modules, even if one accidentally holds a module.toml."""
+        root = tmp_path / "lang-rust"
+        root.mkdir()
+        (root / "module.toml").write_text(
+            _MINIMAL_TOML.format(id="lang-rust", name="Lang Rust")
+        )
+        # A child dir that itself contains a module.toml must be IGNORED once the
+        # root is recognised as a single module dir.
+        (root / "templates").mkdir()
+        (root / "templates" / "module.toml").write_text(
+            _MINIMAL_TOML.format(id="phantom", name="Phantom")
+        )
+
+        entries = [_root_entry(root, RootKind.FETCHED)]
+        modules, report = discover_modules(
+            entries, bundled_root=root / "__nonexistent__"
+        )
+
+        assert set(modules) == {"lang-rust"}
+        assert "phantom" not in modules
+
+    def test_container_root_still_scans_one_level(self, tmp_path):
+        """The container shape (root has NO module.toml) still finds child modules."""
+        root = tmp_path / "modules"
+        root.mkdir()
+        _make_module(root, "mod-a")
+        _make_module(root, "mod-b")
+
+        entries = [_root_entry(root, RootKind.BUNDLED)]
+        modules, report = discover_modules(entries, bundled_root=root)
+
+        assert set(modules) == {"mod-a", "mod-b"}
+
+    def test_single_module_dir_default_enabled_rejected_when_not_bundled(self, tmp_path):
+        """FR-035 still holds: a FETCHED single-module dir with default_enabled=true
+        is rejected (only the bundled root may set default_enabled)."""
+        root = tmp_path / "lang-rust"
+        root.mkdir()
+        (root / "module.toml").write_text(
+            _TOML_WITH_DEFAULT_ENABLED.format(id="lang-rust", name="Lang Rust")
+        )
+
+        entries = [_root_entry(root, RootKind.FETCHED)]
+        modules, report = discover_modules(
+            entries, bundled_root=tmp_path / "bundled_elsewhere"
+        )
+
+        # default_enabled=true off the bundled root is a hard error; the module
+        # must not silently enable.
+        assert "lang-rust" not in modules or report.hard_errors, (
+            "default_enabled=true on a non-bundled single-module dir must be rejected"
+        )
+        assert len(report.hard_errors) >= 1
+
+
+# ---------------------------------------------------------------------------
 # Precedence ordering
 # ---------------------------------------------------------------------------
 
