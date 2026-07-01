@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.1](https://github.com/srobroek/project-setup/compare/project-setup-v0.6.0...project-setup-v0.6.1) (2026-07-01)
+
+
+### Bug Fixes
+
+* ship the thinned bundle with a correctly-pinned addon catalog ([b762783](https://github.com/srobroek/project-setup/commit/b762783b182b4524a3efbf82a6face67c2a0f2b2))
+* ship the thinned bundle with a correctly-pinned addon catalog ([2eb08e4](https://github.com/srobroek/project-setup/commit/2eb08e4e95afd017348ae9881699e54c2f86193a))
+
 ## [0.6.0](https://github.com/srobroek/project-setup/compare/project-setup-v0.5.4...project-setup-v0.6.0) (2026-07-01)
 
 

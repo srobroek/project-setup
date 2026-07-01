@@ -1,5 +1,5 @@
 name: project-setup
-version: 0.6.0  # x-release-please-version
+version: 0.6.1  # x-release-please-version
 description: >-
   Bootstrap a new repo or add a package with explicit setup choices, APM package
   selection, tooling, and verification. Use when creating a project, adding a
