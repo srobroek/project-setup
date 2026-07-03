@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-  "separator": "--",
+  "tag-separator": "--",
   "separate-pull-requests": false,
   "group-pull-request-title-pattern": "chore: release ${branch} components",
   "packages": {
