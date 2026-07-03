@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/srobroek/project-setup/compare/agents-md-v1.0.3...agents-md--v1.1.0) (2026-07-03)
+
+
+### Features
+
+* adopt the double-dash release-tag convention across all components ([d2508e2](https://github.com/srobroek/project-setup/commit/d2508e27914bfa0457ced6340f4b9d49187acfbb))
+
 ## [1.0.3](https://github.com/srobroek/project-setup/compare/agents-md-v1.0.2...agents-md-v1.0.3) (2026-06-30)
 
 
