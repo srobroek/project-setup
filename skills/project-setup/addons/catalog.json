@@ -127,6 +127,13 @@
       "locator": "srobroek/project-setup/catalog/modules/package-add",
       "category": "monorepo",
       "ref": "package-add-v1.2.0"
+    },
+    {
+      "name": "worktreeinclude-write",
+      "description": "Write a .worktreeinclude listing gitignored files that should be copied into git worktrees. Reads .gitignore to distinguish small config/secret files (.env, .envrc, config/secrets.json) from large build directories (node_modules/, .venv/, target/) that should be excluded.",
+      "locator": "srobroek/project-setup/catalog/modules/worktreeinclude-write",
+      "category": "tooling",
+      "ref": "worktreeinclude-write-v1.0.0"
     }
   ]
 }
