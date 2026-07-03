@@ -15,3 +15,8 @@ tags:
   - skill
   - lifecycle
   - bootstrap
+marketplace:
+  versioning:
+    strategy: tag_pattern
+  build:
+    tagPattern: '{name}--v{version}'
