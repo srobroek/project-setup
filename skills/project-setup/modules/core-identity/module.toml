@@ -79,6 +79,3 @@ required = false
 # empty files_written result.
 id = "record"
 kind = "python"
-
-# Release tag convention: core-identity--v<version> (release-please "--" separator),
-# so a bare owner/repo apm dependency resolves this component by semver range.

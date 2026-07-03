@@ -61,6 +61,3 @@ message = "GitHub Actions CI workflow (agent-synthesized, sized to your stack):\
 [[steps]]
 id = "write"
 kind = "python"
-
-# Release tag convention: ci-github-actions--v<version> (release-please "--" separator),
-# so a bare owner/repo apm dependency resolves this component by semver range.

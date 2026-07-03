@@ -51,6 +51,3 @@ message = "Env vars for .env.example (agent-derived):\n{decision}\nWrite .env.ex
 [[steps]]
 id = "write"
 kind = "python"
-
-# Release tag convention: env-example--v<version> (release-please "--" separator),
-# so a bare owner/repo apm dependency resolves this component by semver range.

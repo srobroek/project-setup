@@ -52,6 +52,3 @@ message = "Configure MCP servers (each runs via npx/uvx; review before approving
 [[steps]]
 id = "write"
 kind = "python"
-
-# Release tag convention: mcp-config--v<version> (release-please "--" separator),
-# so a bare owner/repo apm dependency resolves this component by semver range.

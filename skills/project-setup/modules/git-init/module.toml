@@ -68,6 +68,3 @@ kind = "python"
 [[steps]]
 id = "commit"
 kind = "python"
-
-# Release tag convention: git-init--v<version> (release-please "--" separator),
-# so a bare owner/repo apm dependency resolves this component by semver range.

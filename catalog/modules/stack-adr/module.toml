@@ -69,6 +69,3 @@ kind = "gate"
 hardness = "informational"
 init_only = true
 message = "Stack staleness advisory (see above). Proceeding."
-
-# Release tag convention: stack-adr--v<version> (release-please "--" separator),
-# so a bare owner/repo apm dependency resolves this component by semver range.

@@ -104,6 +104,3 @@ message = "Register the new package in the root workspace manifest?\n{decision}"
 [[steps]]
 id = "workspace-edit"
 kind = "python"
-
-# Release tag convention: package-add--v<version> (release-please "--" separator),
-# so a bare owner/repo apm dependency resolves this component by semver range.

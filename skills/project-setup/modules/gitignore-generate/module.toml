@@ -33,6 +33,3 @@ required = false
 [[steps]]
 id = "write"
 kind = "python"
-
-# Release tag convention: gitignore-generate--v<version> (release-please "--" separator),
-# so a bare owner/repo apm dependency resolves this component by semver range.

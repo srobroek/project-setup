@@ -97,6 +97,3 @@ message = "Python stack decision (agent-resolved, registry-verified):\n{decision
 [[steps]]
 id = "write"
 kind = "python"
-
-# Release tag convention: lang-python--v<version> (release-please "--" separator),
-# so a bare owner/repo apm dependency resolves this component by semver range.

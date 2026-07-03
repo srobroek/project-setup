@@ -82,6 +82,3 @@ message = "Architecture section for AGENTS.md (agent-authored):\n{decision}\nWri
 [[steps]]
 id = "splice"
 kind = "python"
-
-# Release tag convention: agents-md--v<version> (release-please "--" separator),
-# so a bare owner/repo apm dependency resolves this component by semver range.

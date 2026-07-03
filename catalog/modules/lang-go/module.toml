@@ -59,6 +59,3 @@ message = "Run the external go mod init generator (creates go.mod). The determin
 [[steps]]
 id = "scaffold"
 kind = "python"
-
-# Release tag convention: lang-go--v<version> (release-please "--" separator),
-# so a bare owner/repo apm dependency resolves this component by semver range.
