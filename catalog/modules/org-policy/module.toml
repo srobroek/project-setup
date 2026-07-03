@@ -28,3 +28,6 @@ message = "Org-policy overrides (org-mandated):\n{decision}\nApply these overrid
 [[steps]]
 id = "apply"
 kind = "python"
+
+# Release tag convention: org-policy--v<version> (release-please "--" separator),
+# so a bare owner/repo apm dependency resolves this component by semver range.

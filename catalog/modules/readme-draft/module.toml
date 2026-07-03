@@ -31,3 +31,6 @@ message = "Project README draft (agent-authored):\n{decision}\nWrite README.md?"
 [[steps]]
 id = "write"
 kind = "python"
+
+# Release tag convention: readme-draft--v<version> (release-please "--" separator),
+# so a bare owner/repo apm dependency resolves this component by semver range.

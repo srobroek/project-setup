@@ -68,3 +68,6 @@ Proceed only if the org/name are correct."""
 [[steps]]
 id = "create"
 kind = "python"
+
+# Release tag convention: github-repo--v<version> (release-please "--" separator),
+# so a bare owner/repo apm dependency resolves this component by semver range.

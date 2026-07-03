@@ -60,3 +60,6 @@ message = "Run the external cargo init generator (may create/overwrite project f
 [[steps]]
 id = "scaffold"
 kind = "python"
+
+# Release tag convention: lang-rust--v<version> (release-please "--" separator),
+# so a bare owner/repo apm dependency resolves this component by semver range.

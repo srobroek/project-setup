@@ -47,3 +47,6 @@ required = false
 [[steps]]
 id = "setup"
 kind = "python"
+
+# Release tag convention: speckit-bridge--v<version> (release-please "--" separator),
+# so a bare owner/repo apm dependency resolves this component by semver range.

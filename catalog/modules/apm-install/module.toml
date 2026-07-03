@@ -54,3 +54,6 @@ message = """Install APM packages — each runs arbitrary code, hooks, and MCP s
 [[steps]]
 id = "install"
 kind = "python"
+
+# Release tag convention: apm-install--v<version> (release-please "--" separator),
+# so a bare owner/repo apm dependency resolves this component by semver range.
