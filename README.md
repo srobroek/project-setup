@@ -29,7 +29,7 @@ After install the `/project-setup` skill is available in any Claude Code session
 The skill ships 6 core modules bundled in `skills/project-setup/modules/`
 (core-identity, dirs-scaffold, gitignore-generate, license-write, agents-md,
 git-init). The remaining 18 addon modules live in `catalog/modules/` — they are
-independently versioned, tagged (`<name>-v<version>`), and fetched on demand via
+independently versioned, tagged (`<name>--v<version>`), and fetched on demand via
 the addon catalog. See `skills/project-setup/addons/catalog.json` for the
 first-party catalog.
 
@@ -54,8 +54,8 @@ testing, and the `[[source]]` declaration format.
 This repo uses release-please in manifest mode. Each module and the core skill
 are independent components:
 
-- Module releases tag as `<name>-v<version>` (e.g. `lang-python-v1.2.0`)
-- Core skill releases tag as `project-setup-v<version>`
+- Module releases tag as `<name>--v<version>` (e.g. `lang-python--v1.2.0`)
+- Core skill releases tag as `project-setup--v<version>`
 - Conventional commit scopes drive which component bumps (e.g.
   `feat(lang-python): ...` bumps only the `lang-python` component)
 

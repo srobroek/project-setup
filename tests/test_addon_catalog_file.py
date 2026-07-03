@@ -166,25 +166,25 @@ class TestCatalogFileStructure:
             )
 
     def test_each_record_ref_is_pinned_to_release_tag(self, catalog):
-        """Every module ref must be a per-module release tag (single-dash form).
+        """Every module ref must be a per-module release tag (double-dash form).
 
         'main' is NOT acceptable — catalog entries must be pinned to an
         immutable tag so fetches are reproducible (thin-core stage 1).
-        Expected form: <name>-v<major>.<minor>.<patch>  (single dash before 'v')
-        Double-dash form (e.g. lang-python--v1.2.1) is the monorepo tag
-        convention and must be REJECTED here — the standalone srobroek/project-setup
-        repo uses single-dash tags.
+        Expected form: <name>--v<major>.<minor>.<patch>  (double dash before 'v')
+        This matches the release-please tag separator ("--") so a bare
+        owner/repo dependency (e.g. apm's srobroek/project-setup) can resolve
+        the component by semver range.
         """
         import re
         for record in catalog["modules"]:
             name = record.get("name", "")
             ref = record.get("ref", "")
-            # Single-dash: <name>-v<semver>  — exactly one dash before 'v'
-            pattern = re.compile(rf"^{re.escape(name)}-v\d+\.\d+\.\d+$")
+            # Double-dash: <name>--v<semver>  — two dashes before 'v'
+            pattern = re.compile(rf"^{re.escape(name)}--v\d+\.\d+\.\d+$")
             assert pattern.match(ref), (
                 f"Module {name!r} ref {ref!r} is not a pinned release tag. "
-                f"Expected pattern: {name}-v<major>.<minor>.<patch> "
-                f"(single-dash form; double-dash is the monorepo convention and is rejected)"
+                f"Expected pattern: {name}--v<major>.<minor>.<patch> "
+                f"(double-dash form, matching the release-please separator)"
             )
 
     def test_language_modules_have_language_category(self, catalog):

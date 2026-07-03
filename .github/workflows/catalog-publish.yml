@@ -1,7 +1,7 @@
 name: Publish addon catalog
 
 # Triggered on push to main (rolling "main" catalog) and on any module or core
-# release tag (*-v*) via the published release event from release-please.
+# release tag (*--v*) via the published release event from release-please.
 on:
   push:
     branches: [main]
@@ -37,7 +37,7 @@ jobs:
           fi
 
       # Build catalog.json from every skills/project-setup/modules/*/module.toml.
-      # For module release tags (*-v*), pin each matching module's ref to the tag;
+      # For module release tags (*--v*), pin each matching module's ref to the tag;
       # all other modules retain "main". On a push-to-main all modules use "main".
       - name: Build catalog.json
         id: build
@@ -61,16 +61,16 @@ jobs:
           event_name  = "${{ github.event_name }}"
 
           # When this is a release event, check if the tag matches a single module
-          # (pattern: <module-name>-v<semver>) and pin that module to the tag.
+          # (pattern: <module-name>--v<semver>) and pin that module to the tag.
           released_module = None
           released_ref    = None
           if event_name == "release":
-              tag = git_ref  # e.g. "lang-python-v1.2.0"
-              m = re.match(r'^(?P<mod>.+)-v\d+\.\d+\.\d+.*$', tag)
+              tag = git_ref  # e.g. "lang-python--v1.2.0"
+              m = re.match(r'^(?P<mod>.+)--v\d+\.\d+\.\d+.*$', tag)
               if m:
                   released_module = m.group("mod")
                   released_ref    = tag
-              # Core skill tag: "project-setup-v0.x.0" — no per-module override needed
+              # Core skill tag: "project-setup--v0.x.0" — no per-module override needed
 
           modules_path = pathlib.Path(modules_dir)
           if not modules_path.is_dir():
