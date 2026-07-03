@@ -175,3 +175,6 @@ message = "UI-kit init command (agent-decided; non-idempotent, reaches network):
 [[steps]]
 id = "ui-kit-scaffold"
 kind = "python"
+
+# Release tag convention: lang-ts--v<version> (release-please "--" separator),
+# so a bare owner/repo apm dependency resolves this component by semver range.

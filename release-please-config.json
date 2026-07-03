@@ -278,6 +278,17 @@
           "path": "module.toml"
         }
       ]
+    },
+    "catalog/modules/worktreeinclude-write": {
+      "release-type": "simple",
+      "component": "worktreeinclude-write",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "module.toml"
+        }
+      ]
     }
   }
 }

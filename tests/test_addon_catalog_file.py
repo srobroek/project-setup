@@ -5,10 +5,10 @@ Spec 020 FR-D2, FR-E1, FR-E3.
 Covers:
 - catalog.json exists, parses as valid JSON
 - schema/note top-level fields present
-- modules list has exactly 18 entries
+- modules list has exactly 19 entries
 - each record has name, description, locator, category (and ref)
 - the 6 base modules are NOT present
-- all 18 addon modules ARE present
+- all 19 addon modules ARE present
 - fetch_addon_catalog parses an in-memory equivalent of the catalog shape
 - paths.plugin_root() resolves when only CLAUDE_PLUGIN_ROOT is set in env
 - a module's _load_sdk fallback accepts CLAUDE_PLUGIN_ROOT when PLUGIN_ROOT absent
@@ -60,7 +60,7 @@ BASE_MODULES = {
     "git-init",
 }
 
-# The 18 addon modules that MUST appear in the catalog.
+# The 19 addon modules that MUST appear in the catalog.
 ADDON_MODULES = {
     "lang-python",
     "lang-ts",
@@ -80,6 +80,7 @@ ADDON_MODULES = {
     "github-repo",
     "org-policy",
     "package-add",
+    "worktreeinclude-write",
 }
 
 REQUIRED_RECORD_KEYS = {"name", "description", "locator", "category"}
@@ -119,9 +120,9 @@ class TestCatalogFileStructure:
         assert "modules" in catalog, "catalog.json must have a 'modules' key"
         assert isinstance(catalog["modules"], list), "'modules' must be a list"
 
-    def test_exactly_18_modules(self, catalog):
+    def test_exactly_19_modules(self, catalog):
         count = len(catalog["modules"])
-        assert count == 18, f"Expected 18 addon modules, found {count}"
+        assert count == 19, f"Expected 19 addon modules, found {count}"
 
     def test_no_base_modules_present(self, catalog):
         names = {m["name"] for m in catalog["modules"] if isinstance(m, dict)}
@@ -165,25 +166,25 @@ class TestCatalogFileStructure:
             )
 
     def test_each_record_ref_is_pinned_to_release_tag(self, catalog):
-        """Every module ref must be a per-module release tag (single-dash form).
+        """Every module ref must be a per-module release tag (double-dash form).
 
         'main' is NOT acceptable — catalog entries must be pinned to an
         immutable tag so fetches are reproducible (thin-core stage 1).
-        Expected form: <name>-v<major>.<minor>.<patch>  (single dash before 'v')
-        Double-dash form (e.g. lang-python--v1.2.1) is the monorepo tag
-        convention and must be REJECTED here — the standalone srobroek/project-setup
-        repo uses single-dash tags.
+        Expected form: <name>--v<major>.<minor>.<patch>  (double dash before 'v')
+        This matches the release-please tag separator ("--") so a bare
+        owner/repo dependency (e.g. apm's srobroek/project-setup) can resolve
+        the component by semver range.
         """
         import re
         for record in catalog["modules"]:
             name = record.get("name", "")
             ref = record.get("ref", "")
-            # Single-dash: <name>-v<semver>  — exactly one dash before 'v'
-            pattern = re.compile(rf"^{re.escape(name)}-v\d+\.\d+\.\d+$")
+            # Double-dash: <name>--v<semver>  — two dashes before 'v'
+            pattern = re.compile(rf"^{re.escape(name)}--v\d+\.\d+\.\d+$")
             assert pattern.match(ref), (
                 f"Module {name!r} ref {ref!r} is not a pinned release tag. "
-                f"Expected pattern: {name}-v<major>.<minor>.<patch> "
-                f"(single-dash form; double-dash is the monorepo convention and is rejected)"
+                f"Expected pattern: {name}--v<major>.<minor>.<patch> "
+                f"(double-dash form, matching the release-please separator)"
             )
 
     def test_language_modules_have_language_category(self, catalog):
@@ -210,7 +211,7 @@ class TestFetchAddonCatalogParsesFileShape:
     """Verify sdk.fetch_addon_catalog handles the object-with-modules-key shape used by catalog.json."""
 
     def test_fetch_addon_catalog_parses_object_shape(self):
-        """fetch_addon_catalog must return 18 records when given a catalog-file-shaped payload."""
+        """fetch_addon_catalog must return 19 records when given a catalog-file-shaped payload."""
         catalog_data = json.loads(_CATALOG_PATH.read_text(encoding="utf-8"))
         # Use the _opener seam to feed the file contents directly (no network).
         result = sdk.fetch_addon_catalog(
@@ -218,7 +219,7 @@ class TestFetchAddonCatalogParsesFileShape:
             _opener=lambda url, timeout: catalog_data,
         )
         assert isinstance(result, list)
-        assert len(result) == 18
+        assert len(result) == 19
 
     def test_fetch_addon_catalog_records_have_required_keys(self):
         catalog_data = json.loads(_CATALOG_PATH.read_text(encoding="utf-8"))

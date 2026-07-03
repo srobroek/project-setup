@@ -18,3 +18,6 @@ after = ["gitignore-generate"]
 [[steps]]
 id = "write"
 kind = "python"
+
+# Release tag convention: worktreeinclude-write--v<version> (release-please "--" separator),
+# so a bare owner/repo apm dependency resolves this component by semver range.

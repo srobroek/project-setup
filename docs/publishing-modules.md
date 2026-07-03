@@ -413,7 +413,7 @@ manifest, runs its inputs, and executes its steps in topological order.
 
 This repository uses release-please in manifest mode. Each module and the core
 skill are independent release-please components. Component tags follow the
-pattern `<component>-v<version>` (e.g. `lang-python-v1.2.0`,
+pattern `<component>--v<version>` (e.g. `lang-python--v1.2.0`,
 `project-setup-v0.3.0`).
 
 Conventional commit scopes drive which component bumps:

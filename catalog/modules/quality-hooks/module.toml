@@ -25,3 +25,6 @@ required = false
 [[steps]]
 id = "write"
 kind = "python"
+
+# Release tag convention: quality-hooks--v<version> (release-please "--" separator),
+# so a bare owner/repo apm dependency resolves this component by semver range.
