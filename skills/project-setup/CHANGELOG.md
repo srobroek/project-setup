@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/srobroek/project-setup/compare/project-setup-v0.6.1...project-setup--v0.7.0) (2026-07-03)
+
+
+### Features
+
+* add worktreeinclude-write module ([#249](https://github.com/srobroek/project-setup/issues/249)) ([90bd9ad](https://github.com/srobroek/project-setup/commit/90bd9ad91e831f591ee4ca1ac79a0f7d6c192f53))
+
 ## [0.6.1](https://github.com/srobroek/project-setup/compare/project-setup-v0.6.0...project-setup-v0.6.1) (2026-07-01)
 
 

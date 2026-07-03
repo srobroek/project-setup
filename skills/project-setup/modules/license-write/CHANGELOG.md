@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/srobroek/project-setup/compare/license-write-v2.0.1...license-write--v2.1.0) (2026-07-03)
+
+
+### Features
+
+* adopt the double-dash release-tag convention across all components ([d2508e2](https://github.com/srobroek/project-setup/commit/d2508e27914bfa0457ced6340f4b9d49187acfbb))
+
 ## [2.0.1](https://github.com/srobroek/project-setup/compare/license-write-v2.0.0...license-write-v2.0.1) (2026-06-30)
 
 

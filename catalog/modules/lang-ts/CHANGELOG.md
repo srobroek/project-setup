@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/srobroek/project-setup/compare/lang-ts-v1.3.0...lang-ts--v1.4.0) (2026-07-03)
+
+
+### Features
+
+* adopt the double-dash release-tag convention across all components ([d2508e2](https://github.com/srobroek/project-setup/commit/d2508e27914bfa0457ced6340f4b9d49187acfbb))
+
 ## [1.3.0](https://github.com/srobroek/project-setup/compare/lang-ts-v1.2.1...lang-ts-v1.3.0) (2026-07-01)
 
 
