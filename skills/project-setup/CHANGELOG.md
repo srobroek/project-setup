@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/srobroek/project-setup/compare/v0.7.0...v0.7.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* **project-setup:** use standard v{version} root tag; revert double-dash churn ([b5cbf6d](https://github.com/srobroek/project-setup/commit/b5cbf6d8b3d1e1e7637a6990f19c81cf62ccdd20))
+
 ## [0.7.0](https://github.com/srobroek/project-setup/compare/project-setup-v0.6.1...project-setup--v0.7.0) (2026-07-03)
 
 
